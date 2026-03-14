@@ -10,10 +10,16 @@ class TGKD_Trainer:
         self.trust_module = trust_module
         self.alpha = alpha
         self.beta = beta
-        self.accumulation_steps = accumulation_steps  # Store this value
+        self.accumulation_steps = accumulation_steps
         
-        # Initialize Scaler for Mixed Precision (recommended for Colab T4)
-        self.scaler = torch.cuda.amp.GradScaler()
+        # --- ADD THESE LINES ---
+        self.criterion_ce = nn.CrossEntropyLoss()
+        self.criterion_kd = nn.KLDivLoss(reduction='batchmean')
+        self.criterion_mse = nn.MSELoss() 
+        # -----------------------
+
+        # Update the Scaler for the new PyTorch version
+        self.scaler = torch.amp.GradScaler('cuda')
 
     def train_epoch(self, loader, optimizer, device):
         self.student.train()
