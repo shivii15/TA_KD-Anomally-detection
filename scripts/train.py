@@ -16,6 +16,7 @@ class TGKD_Trainer:
         self.criterion_ce = nn.CrossEntropyLoss()
         self.criterion_kd = nn.KLDivLoss(reduction='batchmean')
         self.criterion_mse = nn.MSELoss() 
+        self.criterion_feat = nn.MSELoss()  # <--- ADD THIS LINE
         # -----------------------
 
         # Update the Scaler for the new PyTorch version
