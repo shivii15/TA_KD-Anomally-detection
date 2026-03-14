@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import LabelEncoder, RobustScaler
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -28,10 +28,31 @@ def preprocess_iot_data(file_path):
     return X_train, X_test, y_train, y_test, X_benign
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size=1024):
+    # 1. Initialize the encoder
+    le = LabelEncoder()
+    
+    # 2. Convert labels to integers (e.g., "DDoS" -> 0, "Benign" -> 1)
+    y_train = le.fit_transform(y_train)
+    y_test = le.transform(y_test)
+    
+    # 3. Now the tensors will work perfectly
     train_data = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
     test_data = TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
+    
+    #train_data = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
+    #test_data = TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
     
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
     
     return train_loader, test_loader
+
+
+class IoTRobustDataset(Dataset):
+    def __init__(self, file_paths):
+        self.file_paths = file_paths # List of part*.csv files
+
+    def __getitem__(self, idx):
+        # Load only the specific row needed for this index
+        # Or better: load one part file at a time and cache it
+        ...
