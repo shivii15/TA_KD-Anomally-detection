@@ -23,7 +23,14 @@ def preprocess_iot_data(file_path):
     )
     
     # Extract "Golden Set" (Benign only) for the Isolation Forest
-    X_benign = X_train[y_train == 0] # Assuming 0 is 'Benign'
+    #X_benign = X_train[y_train == 0] # Assuming 0 is 'Benign'
+    benign_mask = df['label'].astype(str).str.contains('benign', case=False) | (df['label'] == 0)
+    X_benign = df[benign_mask]
+
+    # 2. Add a check to prevent the crash
+    if len(X_benign) == 0:
+        print("Warning: No benign samples found! Using a small subset of training data instead.")
+        X_benign = X_train[:1000] # Fallback so the code doesn't crash
     
     return X_train, X_test, y_train, y_test, X_benign
 
