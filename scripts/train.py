@@ -1,42 +1,67 @@
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch.cuda.amp import GradScaler, autocast
 
 class TGKD_Trainer:
-    def __init__(self, student, teacher, trust_module, alpha=0.5, beta=0.1):
+    def __init__(self, student, teacher, trust_module, alpha=0.5, beta=0.1, accumulation_steps=1):
         self.student = student
         self.teacher = teacher
         self.trust_module = trust_module
-        self.alpha = alpha   # Weight for Distillation
-        self.beta = beta     # Weight for Feature Alignment
-        self.criterion_ce = nn.CrossEntropyLoss()
-        self.criterion_kd = nn.KLDivLoss(reduction='none') # 'none' to apply sample-wise T
-        self.criterion_feat = nn.MSELoss()
-
-    def compute_loss(self, x, labels):
-        # Forward pass
-        with torch.no_grad():
-            t_logits, t_feat = self.teacher(x)
-            t_adapt, _ = self.trust_module.calculate_trust(t_logits, x)
+        self.alpha = alpha
+        self.beta = beta
+        self.accumulation_steps = accumulation_steps  # Store this value
         
-        s_logits, s_feat = self.student(x)
+        # Initialize Scaler for Mixed Precision (recommended for Colab T4)
+        self.scaler = torch.cuda.amp.GradScaler()
 
-        # 1. Task Loss (L_CE)
-        l_ce = self.criterion_ce(s_logits, labels)
-
-        # 2. Gated Distillation Loss (L_KD)
-        # Reshape t_adapt for broadcasting [batch_size, 1]
-        t_adapt = t_adapt.unsqueeze(1)
+    def train_epoch(self, loader, optimizer, device):
+        self.student.train()
+        self.teacher.eval() # Teacher stays frozen
         
-        soft_targets = F.softmax(t_logits / t_adapt, dim=1)
-        soft_log_probs = F.log_softmax(s_logits / t_adapt, dim=1)
+        optimizer.zero_grad()
         
-        # Pointwise KL then mean
-        l_kd = self.criterion_kd(soft_log_probs, soft_targets).sum(dim=1)
-        l_kd = (l_kd * (t_adapt.squeeze()**2)).mean()
+        for i, (x, y) in enumerate(loader):
+            x, y = x.to(device), y.to(device)
+            
+            # 1. Runs the forward pass with autocasting
+            with autocast():
+                # Get Teacher outputs and Trust metrics without calculating gradients
+                with torch.no_grad():
+                    t_logits, t_feat = self.teacher(x)
+                    t_adapt, _ = self.trust_module.calculate_trust(t_logits, x)
+                
+                # Student forward pass
+                s_logits, s_feat = self.student(x)
+                
+                # --- LOSS CALCULATION ---
+                # Task Loss
+                l_ce = self.criterion_ce(s_logits, y)
+                
+                # Gated Distillation Loss
+                t_adapt = t_adapt.unsqueeze(1)
+                soft_targets = F.softmax(t_logits / t_adapt, dim=1)
+                soft_log_probs = F.log_softmax(s_logits / t_adapt, dim=1)
+                l_kd = self.criterion_kd(soft_log_probs, soft_targets).sum(dim=1)
+                l_kd = (l_kd * (t_adapt.squeeze()**2)).mean()
+                
+                # Feature Alignment Loss
+                l_feat = self.criterion_feat(s_feat, t_feat)
+                
+                # Total Combined Loss (scaled by accumulation steps)
+                total_loss = ((1 - self.alpha) * l_ce + (self.alpha * l_kd) + (self.beta * l_feat))
+                total_loss = total_loss / self.accumulation_steps
 
-        # 3. Feature Alignment Loss (L_Feat)
-        l_feat = self.criterion_feat(s_feat, t_feat)
+            # 2. Backpropagation with Scaled Gradients
+            self.scaler.scale(total_loss).backward()
 
-        # Final Combined Loss
-        total_loss = (1 - self.alpha) * l_ce + (self.alpha * l_kd) + (self.beta * l_feat)
-        
-        return total_loss
+            # 3. Step Optimizer only after enough gradients have accumulated
+            if (i + 1) % self.accumulation_steps == 0:
+                self.scaler.step(optimizer)
+                self.scaler.update()
+                optimizer.zero_grad()
+                
+                # Clean up cache for small GPUs
+                torch.cuda.empty_cache()
+
+        return total_loss.item() * self.accumulation_steps
