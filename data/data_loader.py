@@ -24,8 +24,17 @@ def preprocess_iot_data(file_path):
     
     # Extract "Golden Set" (Benign only) for the Isolation Forest
     #X_benign = X_train[y_train == 0] # Assuming 0 is 'Benign'
-    benign_mask = df['label'].astype(str).str.contains('benign', case=False) | (df['label'] == 0)
-    X_benign = df[benign_mask]
+    # 1. Identify the label column name (usually 'label')
+    label_col = 'label' 
+
+    # 2. Separate Benign data
+    X_benign_df = df[df[label_col] == 'BenignTraffic']
+
+    # 3. CRITICAL: Drop the label column so only numeric features remain
+    X_benign = X_benign_df.drop(columns=[label_col])
+
+    # 4. Optional: Ensure all other columns are numeric
+    X_benign = X_benign.apply(pd.to_numeric, errors='coerce').fillna(0)
 
     # 2. Add a check to prevent the crash
     if len(X_benign) == 0:
