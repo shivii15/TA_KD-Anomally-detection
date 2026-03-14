@@ -7,19 +7,21 @@ import numpy as np
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 # Import your custom modules
-from data_loader import preprocess_iot_data, get_dataloaders
+from data.data_loader import preprocess_iot_data, get_dataloaders
 from models import TeacherDNN, StudentMLP
 from trust_gate import TGKD_TrustModule
 from scripts.train import TGKD_Trainer
 from scripts.attack import test_robustness
 
 def main():
+    torch.cuda.empty_cache()
+    
     # --- 1. CONFIGURATION ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running TGKD-IoT Framework on: {device}")
     
     # Paths and Hyperparameters
-    DATA_PATH = "cic_iot_2023_combined.csv"
+    DATA_PATH = "data/CICIoT2023_xxsmall.csv"
     
     # Physical vs Effective Batch Size
     # Target is 1024 (per your paper). If GPU is small, load 64 at a time.
