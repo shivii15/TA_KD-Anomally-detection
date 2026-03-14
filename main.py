@@ -8,7 +8,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 # Import your custom modules
 from data.data_loader import preprocess_iot_data, get_dataloaders
-from models import TeacherDNN, StudentMLP
+from models.model import TeacherDNN, StudentMLP
 from trust_gate import TGKD_TrustModule
 from scripts.train import TGKD_Trainer
 from scripts.attack import test_robustness
