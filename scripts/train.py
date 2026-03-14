@@ -48,7 +48,8 @@ class TGKD_Trainer:
                 t_adapt = t_adapt.unsqueeze(1)
                 soft_targets = F.softmax(t_logits / t_adapt, dim=1)
                 soft_log_probs = F.log_softmax(s_logits / t_adapt, dim=1)
-                l_kd = self.criterion_kd(soft_log_probs, soft_targets).sum(dim=1)
+                #l_kd = self.criterion_kd(soft_log_probs, soft_targets).sum(dim=1)
+                l_kd = self.criterion_kd(soft_log_probs, soft_targets)
                 l_kd = (l_kd * (t_adapt.squeeze()**2)).mean()
                 
                 # Feature Alignment Loss
