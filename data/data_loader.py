@@ -49,33 +49,24 @@ def preprocess_iot_data(file_path):
     return X_train, X_test, y_train, y_test, X_benign, le
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
-    # 1. Convert to float32/long tensors if not already done
-    # 2. Instantiate the TensorDataset (Notice the parentheses!)
+    # Convert everything to numeric numpy arrays first to clear the 'object' type
+    X_train = np.array(X_train, dtype=np.float32)
+    X_test = np.array(X_test, dtype=np.float32)
+    y_train = np.array(y_train, dtype=np.int64)
+    y_test = np.array(y_test, dtype=np.int64)
+
     train_dataset = TensorDataset(
-        torch.tensor(X_train, dtype=torch.float32), 
-        torch.tensor(y_train, dtype=torch.long)
+        torch.from_numpy(X_train), 
+        torch.from_numpy(y_train)
     )
     
     test_dataset = TensorDataset(
-        torch.tensor(X_test, dtype=torch.float32), 
-        torch.tensor(y_test, dtype=torch.long)
+        torch.from_numpy(X_test), 
+        torch.from_numpy(y_test)
     )
 
-    # 3. Create the loaders
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True,
-        pin_memory=True # Recommended for large GPUs
-    )
-    
-    test_loader = DataLoader(
-        test_dataset, 
-        batch_size=batch_size, 
-        shuffle=False
-    )
-
-    return train_loader, test_loader
+    return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
+           DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
 class IoTRobustDataset(Dataset):
