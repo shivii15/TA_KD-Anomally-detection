@@ -2,114 +2,108 @@ import os
 import torch
 import torch.optim as optim
 import numpy as np
-from tqdm import tqdm  # For the progress bar
 import argparse
 import pandas as pd
+from tqdm import tqdm
 
 # Set environment variable to reduce memory fragmentation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
-# Import your custom modules
+# Import custom modules
 from data.data_loader import preprocess_iot_data, get_dataloaders
 from models.model import TeacherDNN, StudentMLP
-from models.trust_gate import TGKD_TrustModule
+from models.trust_gate import TrustModule as TGKD_TrustModule
 from scripts.train import TGKD_Trainer
-from scripts.attack import test_robustness
 
-def main():
+def main(args):
     torch.cuda.empty_cache()
     
     # --- 1. CONFIGURATION ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running TGKD-IoT Framework on: {device}")
     
-    # Paths
-    DATA_PATH = "data/CICIoT2023_xxsmall.csv"
-    # Change this to your preferred Drive folder
+    # Ensure Save Directory Exists
     SAVE_DIR = "/content/drive/MyDrive/TA_KD_Research/Checkpoints/"
     os.makedirs(SAVE_DIR, exist_ok=True)
     
-    # Hyperparameters
-    PHYSICAL_BATCH = 64 
-    ACCUMULATION_STEPS = 16 
-    EPOCHS = 20
-    LEARNING_RATE = 1e-3
-    ALPHA = 0.5  
-    BETA = 0.1   
-
     # --- 2. DATA PREPARATION ---
     print("\n[1/4] Loading and Preprocessing CIC-IoT-2023 Dataset...")
-    X_train, X_test, y_train, y_test, X_benign, le = preprocess_iot_data(DATA_PATH)
-    #X_train, X_test, y_train, y_test, X_benign = preprocess_iot_data(DATA_PATH)
+    X_train, X_test, y_train, y_test, X_benign, le = preprocess_iot_data(args.data_path)
     
-    target_names = le.classes_
-
+    # Note: Using args.batch_size from command line
     train_loader, test_loader = get_dataloaders(
         X_train, X_test, y_train, y_test, 
-        batch_size=PHYSICAL_BATCH
+        batch_size=args.batch_size
     )
     
     input_dim = X_train.shape[1]
-    num_classes = len(np.unique(y_train))
+    num_classes = len(le.classes_)
 
     # --- 3. MODEL & MODULE INITIALIZATION ---
     print("[2/4] Initializing Models & Trust Module...")
+    
+    # Initialize Teacher and Load Weights from Dictionary Checkpoint
     teacher = TeacherDNN(input_dim, num_classes).to(device)
+    print(f"📂 Loading Teacher from: {args.teacher_path}")
+    checkpoint = torch.load(args.teacher_path, map_location=device)
+    teacher.load_state_dict(checkpoint['model_state_dict'])
+    teacher.eval() # Teacher is always in eval mode
+
+    # Initialize Student
     student = StudentMLP(input_dim, num_classes).to(device)
     
+    # Initialize Trust Module
     trust_module = TGKD_TrustModule(contamination=0.05, w=[0.4, 0.4, 0.2])
+    print("🛠️ Fitting Anomaly Detector on Benign Traffic...")
     trust_module.fit_anomaly_detector(X_benign)
 
+    # Initialize Trainer (Passing args to control trust usage)
     trainer = TGKD_Trainer(
         student=student, 
         teacher=teacher, 
         trust_module=trust_module, 
-        alpha=ALPHA, 
-        beta=BETA,
-        accumulation_steps=ACCUMULATION_STEPS
+        alpha=args.alpha, 
+        beta=args.beta,
+        accumulation_steps=1 # Simplified for large GPU runs
     )
 
-    optimizer = optim.Adam(student.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(student.parameters(), lr=1e-3)
 
-    # --- 4. TRAINING LOOP WITH PROGRESS BAR ---
+    # --- 4. TRAINING LOOP ---
     print(f"\n[3/4] Starting Trust-Gated Knowledge Distillation...")
-    print(f"Effective Batch Size: {PHYSICAL_BATCH * ACCUMULATION_STEPS}")
+    print(f"Epochs: {args.epochs} | Batch Size: {args.batch_size} | Trust Gate: {args.use_trust}")
     
     best_loss = float('inf')
-    target_names = le.classes_
-
     results_history = []
     csv_path = os.path.join(SAVE_DIR, "experiment_results.csv")
 
-    for epoch in range(1, EPOCHS + 1):
-        # We wrap the trainer inside a progress bar manually if trainer.train_epoch doesn't have one
-        # Or if trainer.train_epoch uses tqdm internally, it will show up here.
-        print(f"\nEpoch {epoch}/{EPOCHS}")
+    for epoch in range(1, args.epochs + 1):
+        print(f"\nEpoch {epoch}/{args.epochs}")
         
-        # Using a tqdm wrapper for visual feedback
+        # Training
         epoch_loss = trainer.train_epoch(train_loader, optimizer, device)
         
-        print(f"Average Epoch Loss: {epoch_loss:.4f}")
-
-        # --- 5. SAVE MODEL CHECKPOINTS ---
-        # Save every epoch as 'latest'
-        torch.save(student.state_dict(), os.path.join(SAVE_DIR, "student_latest.pth"))
-        
-        # Save best model
-        if epoch_loss < best_loss:
-            best_loss = epoch_loss
-            torch.save(student.state_dict(), os.path.join(SAVE_DIR, "student_best.pth"))
-            print(f"⭐ New Best Model Saved to Drive!")
-
+        # Evaluation
         metrics = trainer.evaluate(
-        test_loader, 
-        device, 
-        epoch=epoch, 
-        total_epochs=EPOCHS, 
-        label_names=le.classes_
+            test_loader, 
+            device, 
+            epoch=epoch, 
+            total_epochs=args.epochs, 
+            label_names=le.classes_
         )
 
-        # Create a dictionary of all data for this epoch
+        # Save Best Model
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': student.state_dict(),
+                'loss': epoch_loss,
+                'accuracy': metrics['accuracy']
+            }, os.path.join(SAVE_DIR, "student_best.pth"))
+            print(f"⭐ New Best Student Model Saved!")
+
+        # Log results
         epoch_data = {
             "epoch": epoch,
             "loss": epoch_loss,
@@ -119,33 +113,30 @@ def main():
             "recall": metrics['recall']
         }
         results_history.append(epoch_data)
-
-        # Save to CSV every epoch so you don't lose data if the crash happens
         pd.DataFrame(results_history).to_csv(csv_path, index=False)
-        print(f"Epoch {epoch} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
+        
+        print(f"Avg Loss: {epoch_loss:.4f} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
 
     print(f"\n[4/4] Training Complete. Best Loss: {best_loss:.4f}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TGKD for IoT Anomaly Detection")
     
-    # 1. Hyperparameters
-    parser.add_argument('--alpha', type=float, default=0.5, help='Distillation weight')
-    parser.add_argument('--beta', type=float, default=0.1, help='Feature alignment weight')
+    # Data & Model Paths
+    parser.add_argument('--data_path', type=str, required=True, help='Path to dataset CSV')
+    parser.add_argument('--teacher_path', type=str, required=True, help='Path to teacher .pth file')
+    
+    # Training Hyperparameters
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--alpha', type=float, default=0.5, help='KD weight')
+    parser.add_argument('--beta', type=float, default=0.1, help='Feature Alignment weight')
     
-    # 2. Architecture Variations
+    # Architecture & Research Variables
     parser.add_argument('--student_type', choices=['tiny', 'small', 'medium'], default='small')
-    parser.add_argument('--teacher_path', type=str, required=True, help='Path to pretrained teacher')
-    
-    # 3. Trust Gate Variations (The Research Variable)
-    parser.add_argument('--use_trust', action='store_true', help='Enable Trust-Gated Temperature')
-    parser.add_argument('--fixed_temp', type=float, default=2.0, help='T to use if trust is disabled')
+    parser.add_argument('--use_trust', action='store_true', help='Enable Trust-Gated Distillation')
     
     args = parser.parse_args()
     
-    # --- LOGIC START ---
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"🚀 Starting Experiment: Alpha={args.alpha}, TrustGate={args.use_trust}")
-    main()
+    # Run main
+    main(args)
