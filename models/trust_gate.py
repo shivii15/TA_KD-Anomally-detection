@@ -5,7 +5,7 @@ from sklearn.ensemble import IsolationForest
 
 class TGKD_TrustModule(nn.Module):
     def __init__(self, method='weighted', contamination=0.05, w=[0.4, 0.4, 0.2]):
-        super(TrustModule, self).__init__()
+        super().__init__()
         self.method = method
         self.w = w
         self.t_base = 2.0
