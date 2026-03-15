@@ -48,34 +48,33 @@ def preprocess_iot_data(file_path):
     
     return X_train, X_test, y_train, y_test, X_benign, le
 
-def get_dataloaders(X_train, X_test, y_train, y_test, batch_size=1024):
-    # 1. Initialize the encoder
-    le = LabelEncoder()
+def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
+    # 1. Convert to float32/long tensors if not already done
+    # 2. Instantiate the TensorDataset (Notice the parentheses!)
+    train_dataset = TensorDataset(
+        torch.tensor(X_train, dtype=torch.float32), 
+        torch.tensor(y_train, dtype=torch.long)
+    )
     
-    # 2. Convert labels to integers (e.g., "DDoS" -> 0, "Benign" -> 1)
-    y_train = le.fit_transform(y_train)
-    y_test = le.transform(y_test)
-    
-    # 3. Now the tensors will work perfectly
-    train_data = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
-    test_data = TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
-    
-    #train_data = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
-    #test_data = TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
-    
-    #train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    
-    train_loader = DataLoader(
-        Dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        num_workers=16,           # Use more CPU cores
-        pin_memory=True,         # Faster data transfer
-        persistent_workers=True  # Keeps data workers alive between epochs
+    test_dataset = TensorDataset(
+        torch.tensor(X_test, dtype=torch.float32), 
+        torch.tensor(y_test, dtype=torch.long)
     )
 
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+    # 3. Create the loaders
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        pin_memory=True # Recommended for large GPUs
+    )
     
+    test_loader = DataLoader(
+        test_dataset, 
+        batch_size=batch_size, 
+        shuffle=False
+    )
+
     return train_loader, test_loader
 
 
