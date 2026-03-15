@@ -93,8 +93,8 @@ class TGKD_Trainer:
             pbar.set_postfix({"batch_loss": f"{current_loss:.4f}"})
 
             # Calculate duration and print performance
-            epoch_duration = time.time() - start_time
-            self.print_performance(device, total_packets, epoch_duration)
+            #epoch_duration = time.time() - start_time
+            #self.print_performance(device, total_packets, epoch_duration)
 
         return total_epoch_loss / len(loader)
     

@@ -99,7 +99,7 @@ def main(args):
     
     best_loss = float('inf')
     results_history = []
-    csv_path = os.path.join(SAVE_DIR, "experiment_results.csv")
+    csv_path = os.path.join(SAVE_DIR, "experiment_results_largeGPU.csv")
 
     for epoch in range(1, args.epochs + 1):
         print(f"\nEpoch {epoch}/{args.epochs}")
@@ -137,9 +137,11 @@ def main(args):
             "recall": metrics['recall']
         }
         results_history.append(epoch_data)
+
+
         pd.DataFrame(results_history).to_csv(csv_path, index=False)
         
-        print(f"Avg Loss: {epoch_loss:.4f} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
+        #print(f"Avg Loss: {epoch_loss:.4f} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
 
     print(f"\n[4/4] Training Complete. Best Loss: {best_loss:.4f}")
 
