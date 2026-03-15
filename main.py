@@ -2,21 +2,24 @@ import os
 import torch
 import numpy as np
 import sklearn
-
-# --- ALLOWLIST THE BLOCKED GLOBALS ---
-torch.serialization.add_safe_globals([
-    np._core.multiarray._reconstruct,
-    np.ndarray,
-    np.dtype,
-    sklearn.preprocessing._label.LabelEncoder
-])
-
-
-import torch.optim as optim
-import numpy as np
 import argparse
 import pandas as pd
 from tqdm import tqdm
+
+# --- FIX FOR PYTORCH 2.6+ SECURITY ERRORS ---
+# We must allowlist the specific types used by LabelEncoder and NumPy
+try:
+    from numpy.dtypes import ObjectDType
+    torch.serialization.add_safe_globals([
+        ObjectDType, 
+        np.core.multiarray._reconstruct, 
+        np.ndarray, 
+        np.dtype,
+        sklearn.preprocessing._label.LabelEncoder
+    ])
+except (ImportError, AttributeError):
+    # Fallback for different NumPy/Torch versions
+    pass
 
 # Set environment variable to reduce memory fragmentation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
@@ -59,7 +62,7 @@ def main(args):
     print(f"📂 Loading Teacher from: {args.teacher_path}")
     
     
-    checkpoint = torch.load(args.teacher_path, map_location=device)
+    checkpoint = torch.load(args.teacher_path, map_location=device, weights_only=False)
     teacher.load_state_dict(checkpoint['model_state_dict'])
     
     # This ensures the Student and Teacher always use the same class IDs
