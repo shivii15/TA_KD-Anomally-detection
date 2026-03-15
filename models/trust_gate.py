@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.ensemble import IsolationForest
 
-class TrustModule(nn.Module):
+class TGKD_TrustModule(nn.Module):
     def __init__(self, method='weighted', contamination=0.05, w=[0.4, 0.4, 0.2]):
         super(TrustModule, self).__init__()
         self.method = method
