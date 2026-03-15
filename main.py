@@ -6,6 +6,16 @@ import sklearn
 import argparse
 import pandas as pd
 from tqdm import tqdm
+import warnings
+import logging
+
+
+# 1. Ignore the specific Autocast warning
+warnings.filterwarnings("ignore", message=".*autocast.*")
+
+# 2. Lower the logging level for libraries
+logging.getLogger("torch").setLevel(logging.ERROR)
+
 
 # --- FIX FOR PYTORCH 2.6+ SECURITY ERRORS ---
 # We must allowlist the specific types used by LabelEncoder and NumPy

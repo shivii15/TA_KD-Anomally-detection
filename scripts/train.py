@@ -8,6 +8,8 @@ import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_recall_fscore_support
+# At the top of train.py, add:
+from contextlib import nullcontext
 
 class TGKD_Trainer:
     def __init__(self, student, teacher, trust_module, alpha=0.5, beta=0.1, accumulation_steps=1):
@@ -41,7 +43,8 @@ class TGKD_Trainer:
         start_time = time.time()
 
         # Wrap loader in tqdm for a clean progress bar
-        pbar = tqdm(loader, desc="Training Batches", leave=False)
+        #pbar = tqdm(loader, desc="Training Batches", leave=False)
+        pbar = tqdm(loader, desc="Training", disable=True)
 
         self.print_gpu_memory(device)
         
@@ -50,7 +53,9 @@ class TGKD_Trainer:
             total_packets += x.size(0)
 
             # 1. Forward pass with modern autocasting
-            with torch.amp.autocast('cuda'):
+            context = torch.amp.autocast('cuda') if device.type == 'cuda' else nullcontext()
+
+            with context:
                 with torch.no_grad():
                     t_logits, t_feat = self.teacher(x)
                     # Get trust weight (A)
