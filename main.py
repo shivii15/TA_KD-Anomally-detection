@@ -1,5 +1,9 @@
 import os
 import torch
+import sklearn
+# --- ADD THIS LINE TO FIX THE UNPICKLING ERROR ---
+torch.serialization.add_safe_globals([sklearn.preprocessing._label.LabelEncoder])
+
 import torch.optim as optim
 import numpy as np
 import argparse
