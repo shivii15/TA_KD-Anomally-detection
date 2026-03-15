@@ -1,3 +1,5 @@
+from ast import arg
+
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -61,7 +63,17 @@ def get_dataloaders(X_train, X_test, y_train, y_test, batch_size=1024):
     #train_data = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
     #test_data = TensorDataset(torch.FloatTensor(X_test), torch.LongTensor(y_test))
     
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    #train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    
+    train_loader = DataLoader(
+        Dataset, 
+        batch_size=arg.batch_size, 
+        shuffle=True, 
+        num_workers=16,           # Use more CPU cores
+        pin_memory=True,         # Faster data transfer
+        persistent_workers=True  # Keeps data workers alive between epochs
+    )
+
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
     
     return train_loader, test_loader
