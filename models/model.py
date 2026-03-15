@@ -20,12 +20,14 @@ class TeacherDNN(nn.Module):
         return logits, feat
 
 class StudentMLP(nn.Module):
-    def __init__(self, input_dim, num_classes):
+    def __init__(self, input_dim, num_classes, size='small'):
         super(StudentMLP, self).__init__()
+        # Variation: Tiny vs Small
+        hidden = 32 if size == 'tiny' else 64
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_dim, 64),
+            nn.Linear(input_dim, hidden),
             nn.ReLU(),
-            nn.Linear(64, 32) # Intermediate layer for alignment
+            nn.Linear(hidden, 32) # Intermediate layer for alignment
         )
         self.classifier = nn.Linear(32, num_classes)
         

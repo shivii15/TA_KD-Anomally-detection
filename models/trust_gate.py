@@ -1,44 +1,56 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 from sklearn.ensemble import IsolationForest
 
-class TGKD_TrustModule:
-    def __init__(self, contamination=0.05, w=[0.4, 0.4, 0.2]):
-        """
-        w: Weights for [Confidence C(x), Anomaly A(x), Entropy (1-H(x))]
-        """
-        self.iso_forest = IsolationForest(n_estimators=100, contamination=contamination)
+class TrustModule(nn.Module):
+    def __init__(self, method='weighted', contamination=0.05, w=[0.4, 0.4, 0.2]):
+        super(TrustModule, self).__init__()
+        self.method = method
         self.w = w
-        self.t_base = 2.0  # Base temperature
-        self.gamma = 2.0   # Scaling factor
+        self.t_base = 2.0
+        self.gamma = 2.0
+        
+        # Your specific Anomaly Module
+        self.iso_forest = IsolationForest(n_estimators=100, contamination=contamination)
 
     def fit_anomaly_detector(self, X_benign):
-        print("Training Anomaly Module (A) on benign data...")
+        print("🛠️ Training Isolation Forest on benign data...")
         self.iso_forest.fit(X_benign)
 
-    def calculate_trust(self, teacher_logits, x_input):
-        probs = F.softmax(teacher_logits, dim=1)
+    def forward(self, t_logits, x_input):
+        """
+        Calculates t_adapt based on the selected research method.
+        """
+        probs = F.softmax(t_logits, dim=1)
         
-        # 1. Confidence C(x): Max Softmax Probability
-        conf, _ = torch.max(probs, dim=1)
-        
-        # 2. Anomaly Score A(x): Isolation Forest (scaled to [0,1])
-        # score_samples returns negative values (lower is more anomalous)
-        if_scores = self.iso_forest.score_samples(x_input.cpu().numpy())
-        if_scores = (if_scores - if_scores.min()) / (if_scores.max() - if_scores.min() + 1e-6)
-        anomaly_score = torch.FloatTensor(if_scores).to(teacher_logits.device)
-        
-        # 3. Entropy-based Trust (1 - H(x)): High entropy = low trust
-        entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=1)
-        norm_entropy = entropy / torch.log(torch.tensor(probs.size(1), dtype=torch.float))
-        entropy_trust = 1.0 - norm_entropy
-        
-        # Final Trust Score Equation from image: T(x) = w1*C + w2*A + w3*(1-H)
-        trust_score = (self.w[0] * conf) + (self.w[1] * anomaly_score) + (self.w[2] * entropy_trust)
-        
-        # Map Trust Score to Adaptive Temperature: T_adapt = T_base + gamma*(1 - Trust)
-        t_adapt = self.t_base + self.gamma * (1.0 - trust_score)
-        
+        if self.method == 'weighted':
+            # --- YOUR CURRENT BEST LOGIC ---
+            conf, _ = torch.max(probs, dim=1)
+            
+            # Anomaly Score
+            if_scores = self.iso_forest.score_samples(x_input.cpu().numpy())
+            if_scores = (if_scores - if_scores.min()) / (if_scores.max() - if_scores.min() + 1e-6)
+            anomaly_score = torch.FloatTensor(if_scores).to(t_logits.device)
+            
+            # Entropy
+            entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=1)
+            norm_entropy = entropy / torch.log(torch.tensor(probs.size(1), dtype=torch.float))
+            entropy_trust = 1.0 - norm_entropy
+            
+            # Trust Calculation
+            trust_score = (self.w[0] * conf) + (self.w[1] * anomaly_score) + (self.w[2] * entropy_trust)
+            t_adapt = self.t_base + self.gamma * (1.0 - trust_score)
+            
+        elif self.method == 'entropy_only':
+            # --- ABLATION VARIATION 1 ---
+            entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=1)
+            trust_score = torch.exp(-entropy)
+            t_adapt = self.t_base + self.gamma * (1.0 - trust_score)
+            
+        else:
+            # --- BASELINE (Fixed T) ---
+            t_adapt = torch.full((t_logits.size(0),), self.t_base).to(t_logits.device)
+            trust_score = torch.ones_like(t_adapt)
+
         return t_adapt, trust_score
-    

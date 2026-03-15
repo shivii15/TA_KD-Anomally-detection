@@ -3,6 +3,7 @@ import torch
 import torch.optim as optim
 import numpy as np
 from tqdm import tqdm  # For the progress bar
+import argparse
 
 # Set environment variable to reduce memory fragmentation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
@@ -71,6 +72,7 @@ def main():
     print(f"Effective Batch Size: {PHYSICAL_BATCH * ACCUMULATION_STEPS}")
     
     best_loss = float('inf')
+    target_names = le.classes_
 
     for epoch in range(1, EPOCHS + 1):
         # We wrap the trainer inside a progress bar manually if trainer.train_epoch doesn't have one
@@ -92,7 +94,37 @@ def main():
             torch.save(student.state_dict(), os.path.join(SAVE_DIR, "student_best.pth"))
             print(f"⭐ New Best Model Saved to Drive!")
 
+        metrics = trainer.evaluate(
+        test_loader, 
+        device, 
+        epoch=epoch, 
+        total_epochs=EPOCHS, 
+        label_names=target_names
+        )
+        print(f"Epoch {epoch} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
+
     print(f"\n[4/4] Training Complete. Best Loss: {best_loss:.4f}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="TGKD for IoT Anomaly Detection")
+    
+    # 1. Hyperparameters
+    parser.add_argument('--alpha', type=float, default=0.5, help='Distillation weight')
+    parser.add_argument('--beta', type=float, default=0.1, help='Feature alignment weight')
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--batch_size', type=int, default=1024)
+    
+    # 2. Architecture Variations
+    parser.add_argument('--student_type', choices=['tiny', 'small', 'medium'], default='small')
+    parser.add_argument('--teacher_path', type=str, required=True, help='Path to pretrained teacher')
+    
+    # 3. Trust Gate Variations (The Research Variable)
+    parser.add_argument('--use_trust', action='store_true', help='Enable Trust-Gated Temperature')
+    parser.add_argument('--fixed_temp', type=float, default=2.0, help='T to use if trust is disabled')
+    
+    args = parser.parse_args()
+    
+    # --- LOGIC START ---
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"🚀 Starting Experiment: Alpha={args.alpha}, TrustGate={args.use_trust}")
     main()
