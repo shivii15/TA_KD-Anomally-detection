@@ -12,7 +12,7 @@ try:
     from numpy.dtypes import ObjectDType
     torch.serialization.add_safe_globals([
         ObjectDType, 
-        np.core.multiarray._reconstruct, 
+        np._core.multiarray._reconstruct, 
         np.ndarray, 
         np.dtype,
         sklearn.preprocessing._label.LabelEncoder

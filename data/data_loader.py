@@ -18,9 +18,15 @@ def preprocess_iot_data(data_path):
     
     # 3. Create X_benign (CRITICAL FOR TRUST GATE)
     # Find the integer index for 'Benign' (it might be 0, 1, etc.)
-    benign_idx = np.where(le.classes_ == 'Benign')[0][0]
-    # Filter the raw features for only benign traffic
-    X_benign_raw = X[y == 'Benign'] 
+    try:
+        benign_label = [c for c in le.classes_ if 'benign' in c.lower()][0]
+        benign_idx = np.where(le.classes_ == benign_label)[0][0]
+        print(f"✅ Found benign label: {benign_label} at index {benign_idx}")
+    except IndexError:
+        raise ValueError(f"❌ Could not find a 'Benign' label in your dataset. Available classes: {le.classes_}")
+
+    # 3. Create X_benign for the Isolation Forest
+    X_benign_raw = X[y == benign_label]
 
     # 4. Scale everything
     scaler = StandardScaler()
