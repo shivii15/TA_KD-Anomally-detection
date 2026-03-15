@@ -67,7 +67,7 @@ def get_dataloaders(X_train, X_test, y_train, y_test, batch_size=1024):
     
     train_loader = DataLoader(
         Dataset, 
-        batch_size=arg.batch_size, 
+        batch_size=batch_size, 
         shuffle=True, 
         num_workers=16,           # Use more CPU cores
         pin_memory=True,         # Faster data transfer
