@@ -1,8 +1,16 @@
 import os
 import torch
+import numpy as np
 import sklearn
-# --- ADD THIS LINE TO FIX THE UNPICKLING ERROR ---
-torch.serialization.add_safe_globals([sklearn.preprocessing._label.LabelEncoder])
+
+# --- ALLOWLIST THE BLOCKED GLOBALS ---
+torch.serialization.add_safe_globals([
+    numpy._core.multiarray._reconstruct,
+    numpy.ndarray,
+    numpy.dtype,
+    sklearn.preprocessing._label.LabelEncoder
+])
+
 
 import torch.optim as optim
 import numpy as np
