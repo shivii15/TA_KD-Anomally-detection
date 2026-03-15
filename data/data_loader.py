@@ -6,38 +6,35 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 def preprocess_iot_data(data_path):
-    """
-    Loads CIC-IoT-2023 CSV, encodes string labels to integers, 
-    scales features, and splits into train/test sets.
-    """
-    print(f"🔍 Reading dataset: {data_path}")
     df = pd.read_csv(data_path)
     
-    # 1. Identify Label Column
-    # In CIC-IoT-2023, the column is usually named 'label'
-    if 'label' not in df.columns:
-        raise ValueError(f"Label column not found. Available columns: {df.columns.tolist()[:5]}...")
-    
+    # 1. Separate features and labels
     X = df.drop(columns=['label'])
     y = df['label']
 
-    # 2. Convert Labels to Integers (Crucial Fix)
-    # This turns 'DDoS-SynonymousIP_Flood' -> 0, 'Benign' -> 1, etc.
+    # 2. Encode labels
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
-    num_classes = len(le.classes_)
-    print(f"✅ Encoded {num_classes} distinct classes.")
+    
+    # 3. Create X_benign (CRITICAL FOR TRUST GATE)
+    # Find the integer index for 'Benign' (it might be 0, 1, etc.)
+    benign_idx = np.where(le.classes_ == 'Benign')[0][0]
+    # Filter the raw features for only benign traffic
+    X_benign_raw = X[y == 'Benign'] 
 
-    # 3. Scale Features
+    # 4. Scale everything
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
+    # Scale the benign subset separately using the same scaler
+    X_benign_scaled = scaler.transform(X_benign_raw)
 
-    # 4. Train/Test Split
+    # 5. Split train/test
     X_train, X_test, y_train, y_test = train_test_split(
         X_scaled, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
     )
 
-    return X_train, X_test, y_train, y_test, scaler, le
+    # RETURN THE ARRAY, NOT THE SCALER OBJECT
+    return X_train, X_test, y_train, y_test, X_benign_scaled, le
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
     """
@@ -58,7 +55,7 @@ def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
         train_dataset, 
         batch_size=batch_size, 
         shuffle=True, 
-        num_workers=4, 
+        num_workers=2, 
         pin_memory=True,
         persistent_workers=True if batch_size > 128 else False
     )
