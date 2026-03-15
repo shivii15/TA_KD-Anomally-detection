@@ -156,6 +156,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TGKD for IoT Anomaly Detection")
     parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument('--save_dir', type=str, default="./", help='Base directory for outputs')
     parser.add_argument('--teacher_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=1024)
