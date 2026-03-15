@@ -85,38 +85,38 @@ class TGKD_Trainer:
         return total_epoch_loss / len(loader)
     
     def evaluate(self, loader, device, epoch=None, total_epochs=None, label_names=None):
-    self.student.eval()
-    all_preds = []
-    all_labels = []
+        self.student.eval()
+        all_preds = []
+        all_labels = []
     
-    with torch.no_grad():
-        for x, y in tqdm(loader, desc="Evaluating", leave=False):
-            x = x.to(device)
-            logits, _ = self.student(x)
-            preds = torch.argmax(logits, dim=1)
+        with torch.no_grad():
+            for x, y in tqdm(loader, desc="Evaluating", leave=False):
+                x = x.to(device)
+                logits, _ = self.student(x)
+                preds = torch.argmax(logits, dim=1)
+                
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(y.cpu().numpy())
+                
+            # Calculate Metrics
+            acc = accuracy_score(all_labels, all_preds)
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                all_labels, all_preds, average='weighted', zero_division=0
+            )
             
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(y.cpu().numpy())
-            
-    # Calculate Metrics
-    acc = accuracy_score(all_labels, all_preds)
-    precision, recall, f1, _ = precision_recall_fscore_support(
-        all_labels, all_preds, average='weighted', zero_division=0
-    )
-    
-    # Generate Confusion Matrix on the last epoch
-    if epoch == total_epochs:
-        cm = confusion_matrix(all_labels, all_preds)
-        plt.figure(figsize=(12, 10))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                    xticklabels=label_names, yticklabels=label_names)
-        plt.title(f'Confusion Matrix - Epoch {epoch}')
-        plt.ylabel('Actual Category')
-        plt.xlabel('Predicted Category')
-        plt.savefig(f'confusion_matrix_epoch_{epoch}.png')
-        print(f"✅ Confusion Matrix saved as 'confusion_matrix_epoch_{epoch}.png'")
-        plt.show()
+            # Generate Confusion Matrix on the last epoch
+            if epoch == total_epochs:
+                cm = confusion_matrix(all_labels, all_preds)
+                plt.figure(figsize=(12, 10))
+                sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                            xticklabels=label_names, yticklabels=label_names)
+                plt.title(f'Confusion Matrix - Epoch {epoch}')
+                plt.ylabel('Actual Category')
+                plt.xlabel('Predicted Category')
+                plt.savefig(f'confusion_matrix_epoch_{epoch}.png')
+                print(f"✅ Confusion Matrix saved as 'confusion_matrix_epoch_{epoch}.png'")
+                plt.show()
 
-    return {
-        "accuracy": acc, "precision": precision, "recall": recall, "f1": f1
-    }
+        return {
+                "accuracy": acc, "precision": precision, "recall": recall, "f1": f1
+            }
