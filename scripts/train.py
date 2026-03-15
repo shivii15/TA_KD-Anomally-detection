@@ -36,9 +36,11 @@ class TGKD_Trainer:
         
         # Wrap loader in tqdm for a clean progress bar
         pbar = tqdm(loader, desc="Training Batches", leave=False)
+
+        self.print_gpu_memory(device)
         
         for i, (x, y) in enumerate(pbar):
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             
             # 1. Forward pass with modern autocasting
             with torch.amp.autocast('cuda'):
@@ -121,3 +123,8 @@ class TGKD_Trainer:
         return {
                 "accuracy": acc, "precision": precision, "recall": recall, "f1": f1
             }
+    def print_gpu_memory(self, device):
+        if device.type == 'cuda':
+            allocated = torch.cuda.memory_allocated(device) / 1024**3
+            reserved = torch.cuda.memory_reserved(device) / 1024**3
+            print(f"📊 GPU Memory: {allocated:.2f}GB allocated, {reserved:.2f}GB reserved")
