@@ -49,7 +49,12 @@ def main():
         print(f"Epoch {epoch}/{args.epochs} | Avg Loss: {total_loss/len(train_loader):.4f}")
 
     # 4. Save
-    torch.save(model.state_dict(), args.save_path)
+    # --- IN train_teacher.py ---
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'le': le  # Saving the label encoder is helpful for your paper!
+    }, args.save_path)
+
     print(f"✅ Teacher training complete. Saved to: {args.save_path}")
 
 if __name__ == "__main__":
