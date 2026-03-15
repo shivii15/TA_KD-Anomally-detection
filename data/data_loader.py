@@ -1,71 +1,73 @@
-from ast import arg
-
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler, RobustScaler
 import torch
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
-def preprocess_iot_data(file_path):
-    df = pd.read_csv(file_path)
+def preprocess_iot_data(data_path):
+    """
+    Loads CIC-IoT-2023 CSV, encodes string labels to integers, 
+    scales features, and splits into train/test sets.
+    """
+    print(f"🔍 Reading dataset: {data_path}")
+    df = pd.read_csv(data_path)
     
-    # Feature Selection: The 47 core features for CIC-IoT-2023
-    # Note: Replace with actual column names from your dataset
-    X = df.drop(columns=['label']) 
-    y = df['label'].values
+    # 1. Identify Label Column
+    # In CIC-IoT-2023, the column is usually named 'label'
+    if 'label' not in df.columns:
+        raise ValueError(f"Label column not found. Available columns: {df.columns.tolist()[:5]}...")
     
-    # Robust scaling for network traffic (handles outliers/spikes better)
-    scaler = RobustScaler()
+    X = df.drop(columns=['label'])
+    y = df['label']
+
+    # 2. Convert Labels to Integers (Crucial Fix)
+    # This turns 'DDoS-SynonymousIP_Flood' -> 0, 'Benign' -> 1, etc.
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    num_classes = len(le.classes_)
+    print(f"✅ Encoded {num_classes} distinct classes.")
+
+    # 3. Scale Features
+    scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
-    
-    # Split: 80% Train, 20% Test
+
+    # 4. Train/Test Split
     X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.2, random_state=42
+        X_scaled, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
     )
 
-    le = LabelEncoder()
-    y = le.fit_transform(df['label']) # Assuming 'label' is your column name
-    
-    # Extract "Golden Set" (Benign only) for the Isolation Forest
-    #X_benign = X_train[y_train == 0] # Assuming 0 is 'Benign'
-    # 1. Identify the label column name (usually 'label')
-    label_col = 'label' 
-
-    # 2. Separate Benign data
-    X_benign_df = df[df[label_col] == 'BenignTraffic']
-
-    # 3. CRITICAL: Drop the label column so only numeric features remain
-    X_benign = X_benign_df.drop(columns=[label_col])
-
-    # 4. Optional: Ensure all other columns are numeric
-    X_benign = X_benign.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-    # 2. Add a check to prevent the crash
-    if len(X_benign) == 0:
-        print("Warning: No benign samples found! Using a small subset of training data instead.")
-        X_benign = X_train[:1000] # Fallback so the code doesn't crash
-    
     return X_train, X_test, y_train, y_test, scaler, le
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
-    # Convert to proper types for PyTorch
-    X_train = X_train.astype(np.float32)
-    X_test = X_test.astype(np.float32)
-    y_train = y_train.astype(np.int64) # This will work now because y is numbers
-    y_test = y_test.astype(np.int64)
+    """
+    Converts numpy arrays to PyTorch Tensors and creates DataLoaders.
+    """
+    # Force conversion to numeric types to avoid 'object' or 'string' errors
+    X_train_t = torch.tensor(X_train, dtype=torch.float32)
+    y_train_t = torch.tensor(y_train, dtype=torch.long)
+    X_test_t = torch.tensor(X_test, dtype=torch.float32)
+    y_test_t = torch.tensor(y_test, dtype=torch.long)
 
-    train_dataset = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
-    test_dataset = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
+    # Create Datasets
+    train_dataset = TensorDataset(X_train_t, y_train_t)
+    test_dataset = TensorDataset(X_test_t, y_test_t)
 
-    return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
-           DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    # Create Loaders with GPU optimizations
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        num_workers=4, 
+        pin_memory=True,
+        persistent_workers=True if batch_size > 128 else False
+    )
+    
+    test_loader = DataLoader(
+        test_dataset, 
+        batch_size=batch_size, 
+        shuffle=False,
+        pin_memory=True
+    )
 
-class IoTRobustDataset(Dataset):
-    def __init__(self, file_paths):
-        self.file_paths = file_paths # List of part*.csv files
-
-    def __getitem__(self, idx):
-        # Load only the specific row needed for this index
-        # Or better: load one part file at a time and cache it
-        ...
+    return train_loader, test_loader
