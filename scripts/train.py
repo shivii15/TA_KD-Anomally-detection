@@ -1,3 +1,5 @@
+import time
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,8 +34,12 @@ class TGKD_Trainer:
         self.teacher.eval() 
         
         total_epoch_loss = 0
+        total_packets = 0
         optimizer.zero_grad()
         
+        # Start the clock
+        start_time = time.time()
+
         # Wrap loader in tqdm for a clean progress bar
         pbar = tqdm(loader, desc="Training Batches", leave=False)
 
@@ -41,7 +47,8 @@ class TGKD_Trainer:
         
         for i, (x, y) in enumerate(pbar):
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
-            
+            total_packets += x.size(0)
+
             # 1. Forward pass with modern autocasting
             with torch.amp.autocast('cuda'):
                 with torch.no_grad():
@@ -85,6 +92,10 @@ class TGKD_Trainer:
             total_epoch_loss += current_loss
             pbar.set_postfix({"batch_loss": f"{current_loss:.4f}"})
 
+            # Calculate duration and print performance
+            epoch_duration = time.time() - start_time
+            self.print_performance(device, total_packets, epoch_duration)
+
         return total_epoch_loss / len(loader)
     
     def evaluate(self, loader, device, epoch=None, total_epochs=None, label_names=None):
@@ -123,6 +134,18 @@ class TGKD_Trainer:
         return {
                 "accuracy": acc, "precision": precision, "recall": recall, "f1": f1
             }
+    
+    def print_performance(self, device, total_packets, duration):
+            """Prints GPU memory usage and processing throughput."""
+            throughput = total_packets / duration
+            print(f"\n🚀 Performance Metrics:")
+            print(f"   - Throughput: {throughput:.2f} Packets/Second")
+            
+            if device.type == 'cuda':
+                allocated = torch.cuda.memory_allocated(device) / 1024**3
+                reserved = torch.cuda.memory_reserved(device) / 1024**3
+                print(f"   - GPU VRAM: {allocated:.2f}GB allocated / {reserved:.2f}GB reserved")
+
     def print_gpu_memory(self, device):
         if device.type == 'cuda':
             allocated = torch.cuda.memory_allocated(device) / 1024**3
