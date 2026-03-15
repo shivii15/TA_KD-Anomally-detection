@@ -1,6 +1,6 @@
 import os
 import torch
-import torch.optim as optim  # <--- THIS IS THE MISSING LINE
+import torch.optim as optim
 import numpy as np
 import sklearn
 import argparse
@@ -8,17 +8,14 @@ import pandas as pd
 from tqdm import tqdm
 import warnings
 import logging
+from datetime import datetime
 
-
-# 1. Ignore the specific Autocast warning
+# --- 1. SUPPRESS NOISY WARNINGS ---
 warnings.filterwarnings("ignore", message=".*autocast.*")
-
-# 2. Lower the logging level for libraries
+warnings.filterwarnings("ignore", message=".*CUDA is not available.*")
 logging.getLogger("torch").setLevel(logging.ERROR)
 
-
-# --- FIX FOR PYTORCH 2.6+ SECURITY ERRORS ---
-# We must allowlist the specific types used by LabelEncoder and NumPy
+# --- 2. FIX FOR PYTORCH 2.6+ SECURITY ERRORS ---
 try:
     from numpy.dtypes import ObjectDType
     torch.serialization.add_safe_globals([
@@ -29,10 +26,9 @@ try:
         sklearn.preprocessing._label.LabelEncoder
     ])
 except (ImportError, AttributeError):
-    # Fallback for different NumPy/Torch versions
     pass
 
-# Set environment variable to reduce memory fragmentation
+# Environment setup
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 # Import custom modules
@@ -44,19 +40,27 @@ from scripts.train import TGKD_Trainer
 def main(args):
     torch.cuda.empty_cache()
     
-    # --- 1. CONFIGURATION ---
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Running TGKD-IoT Framework on: {device}")
-    
-    # Ensure Save Directory Exists
-    SAVE_DIR = "/content/drive/MyDrive/TA_KD_Research/Checkpoints/"
+    # --- 3. GENERATE UNIQUE RUN ID & PATHS ---
+    # Example: TGKD_small_a0.5_b0.1_20260315_1430
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    run_id = f"TGKD_{args.student_type}_a{args.alpha}_b{args.beta}_{timestamp}"
+
+    # Set up directories relative to current path for server compatibility
+    BASE_DIR = os.getcwd()
+    SAVE_DIR = os.path.join(BASE_DIR, "outputs", run_id)
     os.makedirs(SAVE_DIR, exist_ok=True)
     
-    # --- 2. DATA PREPARATION ---
-    print("\n[1/4] Loading and Preprocessing CIC-IoT-2023 Dataset...")
+    csv_path = os.path.join(SAVE_DIR, f"metrics_{run_id}.csv")
+    
+    # --- 4. CONFIGURATION ---
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"🚀 Experiment ID: {run_id}")
+    print(f"💻 Running on: {device}")
+    
+    # --- 5. DATA PREPARATION ---
+    print("\n[1/4] Loading and Preprocessing Dataset...")
     X_train, X_test, y_train, y_test, X_benign, le = preprocess_iot_data(args.data_path)
     
-    # Note: Using args.batch_size from command line
     train_loader, test_loader = get_dataloaders(
         X_train, X_test, y_train, y_test, 
         batch_size=args.batch_size
@@ -65,56 +69,44 @@ def main(args):
     input_dim = X_train.shape[1]
     num_classes = len(le.classes_)
 
-    # --- 3. MODEL & MODULE INITIALIZATION ---
+    # --- 6. MODEL & MODULE INITIALIZATION ---
     print("[2/4] Initializing Models & Trust Module...")
     
-    # Initialize Teacher and Load Weights from Dictionary Checkpoint
     teacher = TeacherDNN(input_dim, num_classes).to(device)
-    print(f"📂 Loading Teacher from: {args.teacher_path}")
-    
+    print(f"📂 Loading Teacher: {os.path.basename(args.teacher_path)}")
     
     checkpoint = torch.load(args.teacher_path, map_location=device, weights_only=False)
     teacher.load_state_dict(checkpoint['model_state_dict'])
     
-    # This ensures the Student and Teacher always use the same class IDs
     if 'le' in checkpoint:
         le = checkpoint['le']
-        print(f"✅ LabelEncoder synced. Number of classes: {len(le.classes_)}")
+        print(f"✅ LabelEncoder synced. Classes: {len(le.classes_)}")
     
-    teacher.eval() # Teacher is always in eval mode
-    print("✅ Teacher weights successfully extracted from checkpoint.")
-    # Initialize Student
+    teacher.eval()
     student = StudentMLP(input_dim, num_classes).to(device)
     
-    # Initialize Trust Module
     trust_module = TGKD_TrustModule(contamination=0.05, w=[0.4, 0.4, 0.2])
     print("🛠️ Fitting Anomaly Detector on Benign Traffic...")
     trust_module.fit_anomaly_detector(X_benign)
 
-    # Initialize Trainer (Passing args to control trust usage)
     trainer = TGKD_Trainer(
         student=student, 
         teacher=teacher, 
         trust_module=trust_module, 
         alpha=args.alpha, 
-        beta=args.beta,
-        accumulation_steps=1 # Simplified for large GPU runs
+        beta=args.beta
     )
 
     optimizer = optim.Adam(student.parameters(), lr=1e-3)
 
-    # --- 4. TRAINING LOOP ---
-    print(f"\n[3/4] Starting Trust-Gated Knowledge Distillation...")
-    print(f"Epochs: {args.epochs} | Batch Size: {args.batch_size} | Trust Gate: {args.use_trust}")
+    # --- 7. TRAINING LOOP ---
+    print(f"\n[3/4] Starting Distillation...")
     
     best_loss = float('inf')
     results_history = []
-    csv_path = os.path.join(SAVE_DIR, "experiment_results_largeGPU.csv")
 
     for epoch in range(1, args.epochs + 1):
-        print(f"\nEpoch {epoch}/{args.epochs}")
-        
-        # Training
+        # Training (Silent mode - internal prints should be removed in scripts/train.py)
         epoch_loss = trainer.train_epoch(train_loader, optimizer, device)
         
         # Evaluation
@@ -126,53 +118,51 @@ def main(args):
             label_names=le.classes_
         )
 
-        # Save Best Model
+        # Save Best Model with Timestamped Name
         if epoch_loss < best_loss:
             best_loss = epoch_loss
+            best_model_name = f"best_student_{run_id}.pth"
             torch.save({
+                'run_id': run_id,
                 'epoch': epoch,
                 'model_state_dict': student.state_dict(),
+                'hyperparams': {'alpha': args.alpha, 'beta': args.beta, 'student': args.student_type},
                 'loss': epoch_loss,
-                'accuracy': metrics['accuracy']
-            }, os.path.join(SAVE_DIR, "student_best.pth"))
-            print(f"⭐ New Best Student Model Saved!")
+                'accuracy': metrics['accuracy'],
+                'le': le
+            }, os.path.join(SAVE_DIR, best_model_name))
+            print(f"⭐ Epoch {epoch:02d}: New Best Model Saved ({epoch_loss:.4f})")
 
-        # Log results
+        # Log results to list
         epoch_data = {
+            "run_id": run_id,
             "epoch": epoch,
-            "loss": epoch_loss,
-            "accuracy": metrics['accuracy'],
-            "f1_score": metrics['f1'],
-            "precision": metrics['precision'],
-            "recall": metrics['recall']
+            "loss": round(epoch_loss, 5),
+            "accuracy": round(metrics['accuracy'], 5),
+            "f1_score": round(metrics['f1'], 5),
+            "precision": round(metrics['precision'], 5),
+            "recall": round(metrics['recall'], 5)
         }
         results_history.append(epoch_data)
 
-
+        # Save/Update CSV
         pd.DataFrame(results_history).to_csv(csv_path, index=False)
         
-        #print(f"Avg Loss: {epoch_loss:.4f} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
+        # Clean console summary
+        print(f"📊 Summary Ep {epoch:02d}: Loss={epoch_loss:.4f} | Acc={metrics['accuracy']:.4f} | F1={metrics['f1']:.4f}")
 
-    print(f"\n[4/4] Training Complete. Best Loss: {best_loss:.4f}")
+    print(f"\n[4/4] Complete! All artifacts saved in: {SAVE_DIR}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TGKD for IoT Anomaly Detection")
-    
-    # Data & Model Paths
-    parser.add_argument('--data_path', type=str, required=True, help='Path to dataset CSV')
-    parser.add_argument('--teacher_path', type=str, required=True, help='Path to teacher .pth file')
-    
-    # Training Hyperparameters
+    parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument('--teacher_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--alpha', type=float, default=0.5, help='KD weight')
-    parser.add_argument('--beta', type=float, default=0.1, help='Feature Alignment weight')
-    
-    # Architecture & Research Variables
+    parser.add_argument('--alpha', type=float, default=0.5)
+    parser.add_argument('--beta', type=float, default=0.1)
     parser.add_argument('--student_type', choices=['tiny', 'small', 'medium'], default='small')
-    parser.add_argument('--use_trust', action='store_true', help='Enable Trust-Gated Distillation')
+    parser.add_argument('--use_trust', action='store_true')
     
     args = parser.parse_args()
-    
-    # Run main
     main(args)
