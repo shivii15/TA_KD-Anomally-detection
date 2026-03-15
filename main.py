@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.optim as optim  # <--- THIS IS THE MISSING LINE
 import numpy as np
 import sklearn
 import argparse
