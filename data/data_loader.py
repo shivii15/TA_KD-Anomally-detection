@@ -21,6 +21,9 @@ def preprocess_iot_data(file_path):
     X_train, X_test, y_train, y_test = train_test_split(
         X_scaled, y, test_size=0.2, random_state=42
     )
+
+    le = LabelEncoder()
+    y = le.fit_transform(df['label']) # Assuming 'label' is your column name
     
     # Extract "Golden Set" (Benign only) for the Isolation Forest
     #X_benign = X_train[y_train == 0] # Assuming 0 is 'Benign'
@@ -41,7 +44,7 @@ def preprocess_iot_data(file_path):
         print("Warning: No benign samples found! Using a small subset of training data instead.")
         X_benign = X_train[:1000] # Fallback so the code doesn't crash
     
-    return X_train, X_test, y_train, y_test, X_benign
+    return X_train, X_test, y_train, y_test, X_benign, le
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size=1024):
     # 1. Initialize the encoder

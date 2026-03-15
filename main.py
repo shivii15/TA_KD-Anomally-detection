@@ -4,6 +4,7 @@ import torch.optim as optim
 import numpy as np
 from tqdm import tqdm  # For the progress bar
 import argparse
+import pandas as pd
 
 # Set environment variable to reduce memory fragmentation
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
@@ -38,8 +39,11 @@ def main():
 
     # --- 2. DATA PREPARATION ---
     print("\n[1/4] Loading and Preprocessing CIC-IoT-2023 Dataset...")
-    X_train, X_test, y_train, y_test, X_benign = preprocess_iot_data(DATA_PATH)
+    X_train, X_test, y_train, y_test, X_benign, le = preprocess_iot_data(DATA_PATH)
+    #X_train, X_test, y_train, y_test, X_benign = preprocess_iot_data(DATA_PATH)
     
+    target_names = le.classes_
+
     train_loader, test_loader = get_dataloaders(
         X_train, X_test, y_train, y_test, 
         batch_size=PHYSICAL_BATCH
@@ -74,6 +78,9 @@ def main():
     best_loss = float('inf')
     target_names = le.classes_
 
+    results_history = []
+    csv_path = os.path.join(SAVE_DIR, "experiment_results.csv")
+
     for epoch in range(1, EPOCHS + 1):
         # We wrap the trainer inside a progress bar manually if trainer.train_epoch doesn't have one
         # Or if trainer.train_epoch uses tqdm internally, it will show up here.
@@ -99,8 +106,22 @@ def main():
         device, 
         epoch=epoch, 
         total_epochs=EPOCHS, 
-        label_names=target_names
+        label_names=le.classes_
         )
+
+        # Create a dictionary of all data for this epoch
+        epoch_data = {
+            "epoch": epoch,
+            "loss": epoch_loss,
+            "accuracy": metrics['accuracy'],
+            "f1_score": metrics['f1'],
+            "precision": metrics['precision'],
+            "recall": metrics['recall']
+        }
+        results_history.append(epoch_data)
+
+        # Save to CSV every epoch so you don't lose data if the crash happens
+        pd.DataFrame(results_history).to_csv(csv_path, index=False)
         print(f"Epoch {epoch} | Acc: {metrics['accuracy']:.4f} | F1: {metrics['f1']:.4f}")
 
     print(f"\n[4/4] Training Complete. Best Loss: {best_loss:.4f}")
