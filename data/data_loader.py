@@ -46,28 +46,20 @@ def preprocess_iot_data(file_path):
         print("Warning: No benign samples found! Using a small subset of training data instead.")
         X_benign = X_train[:1000] # Fallback so the code doesn't crash
     
-    return X_train, X_test, y_train, y_test, X_benign, le
+    return X_train, X_test, y_train, y_test, scaler, le
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
-    # Convert everything to numeric numpy arrays first to clear the 'object' type
-    X_train = np.array(X_train, dtype=np.float32)
-    X_test = np.array(X_test, dtype=np.float32)
-    y_train = np.array(y_train, dtype=np.int64)
-    y_test = np.array(y_test, dtype=np.int64)
+    # Convert to proper types for PyTorch
+    X_train = X_train.astype(np.float32)
+    X_test = X_test.astype(np.float32)
+    y_train = y_train.astype(np.int64) # This will work now because y is numbers
+    y_test = y_test.astype(np.int64)
 
-    train_dataset = TensorDataset(
-        torch.from_numpy(X_train), 
-        torch.from_numpy(y_train)
-    )
-    
-    test_dataset = TensorDataset(
-        torch.from_numpy(X_test), 
-        torch.from_numpy(y_test)
-    )
+    train_dataset = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
+    test_dataset = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
 
     return DataLoader(train_dataset, batch_size=batch_size, shuffle=True), \
            DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
 
 class IoTRobustDataset(Dataset):
     def __init__(self, file_paths):
