@@ -45,10 +45,18 @@ def main(args):
     # Initialize Teacher and Load Weights from Dictionary Checkpoint
     teacher = TeacherDNN(input_dim, num_classes).to(device)
     print(f"📂 Loading Teacher from: {args.teacher_path}")
+    
+    
     checkpoint = torch.load(args.teacher_path, map_location=device)
     teacher.load_state_dict(checkpoint['model_state_dict'])
+    
+    # This ensures the Student and Teacher always use the same class IDs
+    if 'le' in checkpoint:
+        le = checkpoint['le']
+        print(f"✅ LabelEncoder synced. Number of classes: {len(le.classes_)}")
+    
     teacher.eval() # Teacher is always in eval mode
-
+    print("✅ Teacher weights successfully extracted from checkpoint.")
     # Initialize Student
     student = StudentMLP(input_dim, num_classes).to(device)
     
