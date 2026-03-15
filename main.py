@@ -5,9 +5,9 @@ import sklearn
 
 # --- ALLOWLIST THE BLOCKED GLOBALS ---
 torch.serialization.add_safe_globals([
-    numpy._core.multiarray._reconstruct,
-    numpy.ndarray,
-    numpy.dtype,
+    np._core.multiarray._reconstruct,
+    np.ndarray,
+    np.dtype,
     sklearn.preprocessing._label.LabelEncoder
 ])
 
