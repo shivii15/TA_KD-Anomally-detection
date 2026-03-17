@@ -59,10 +59,10 @@ def main(args):
     
     # --- 5. DATA PREPARATION ---
     print("\n[1/4] Loading and Preprocessing Dataset...")
-    X_train, X_test, y_train, y_test, X_benign, le = preprocess_iot_data(args.data_path)
+    X_train, y_train,_ = preprocess_iot_data(args.data_path)
     
     train_loader, test_loader = get_dataloaders(
-        X_train, X_test, y_train, y_test, 
+        X_train, y_train, 
         batch_size=args.batch_size
     )
     

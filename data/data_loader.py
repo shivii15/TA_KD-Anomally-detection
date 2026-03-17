@@ -1,76 +1,59 @@
 import pandas as pd
 import numpy as np
-import torch
-from torch.utils.data import TensorDataset, DataLoader
-from sklearn.model_selection import train_test_split
+import glob
+import os
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
-def preprocess_iot_data(data_path):
-    df = pd.read_csv(data_path)
+def preprocess_iot_data(data_dir, num_parts=3):
+    """
+    Finds CSV parts, merges them, filters labels, and scales features.
+    """
+    # 1. Dynamically find all CSV parts
+    all_files = glob.glob(os.path.join(data_dir, "part-*.csv"))
+    all_files.sort()
     
-    # 1. Separate features and labels
-    X = df.drop(columns=['label'])
-    y = df['label']
+    selected_files = all_files[:num_parts]
+    if not selected_files:
+        raise FileNotFoundError(f"No CSV parts found in {data_dir}")
 
-    # 2. Encode labels
+    print(f"📦 Loading {len(selected_files)} parts for training...")
+    
+    dfs = []
+    for f in selected_files:
+        # Load with low_memory=False to handle the large IoT dataset types
+        temp_df = pd.read_csv(f, low_memory=False)
+        dfs.append(temp_df)
+    
+    df = pd.concat(dfs, ignore_index=True)
+
+    # 2. Clean column names (fixes the Magnitude typo and spaces)
+    df.columns = df.columns.str.replace(' ', '_').str.replace('Magnitue', 'Magnitude')
+
+    # 3. Apply your Research Filter
+    labels_to_remove = ['DictionaryBruteForce', 'BrowserHijacking', 'XSS', 
+                        'Uploading_Attack', 'SqlInjection', 'CommandInjection', 'Backdoor_Malware']
+    df = df[~df['label'].isin(labels_to_remove)]
+
+    # 4. Separate Features and Labels
+    X = df.drop(columns=['label']).apply(pd.to_numeric, errors='coerce').fillna(0).values
+    y_raw = df['label'].values
+
+    # 5. Label Encoding (String -> Int)
     le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
-    
-    # 3. Create X_benign (CRITICAL FOR TRUST GATE)
-    # Find the integer index for 'Benign' (it might be 0, 1, etc.)
-    try:
-        benign_label = [c for c in le.classes_ if 'benign' in c.lower()][0]
-        benign_idx = np.where(le.classes_ == benign_label)[0][0]
-        print(f"✅ Found benign label: {benign_label} at index {benign_idx}")
-    except IndexError:
-        raise ValueError(f"❌ Could not find a 'Benign' label in your dataset. Available classes: {le.classes_}")
+    y = le.fit_transform(y_raw)
 
-    # 3. Create X_benign for the Isolation Forest
-    X_benign_raw = X[y == benign_label]
-
-    # 4. Scale everything
+    # 6. Scaling
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
-    # Scale the benign subset separately using the same scaler
-    X_benign_scaled = scaler.transform(X_benign_raw)
 
-    # 5. Split train/test
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
-    )
+    return X_scaled, y, le
 
-    # RETURN THE ARRAY, NOT THE SCALER OBJECT
-    return X_train, X_test, y_train, y_test, X_benign_scaled, le
-
-def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
-    """
-    Converts numpy arrays to PyTorch Tensors and creates DataLoaders.
-    """
-    # Force conversion to numeric types to avoid 'object' or 'string' errors
-    X_train_t = torch.tensor(X_train, dtype=torch.float32)
-    y_train_t = torch.tensor(y_train, dtype=torch.long)
-    X_test_t = torch.tensor(X_test, dtype=torch.float32)
-    y_test_t = torch.tensor(y_test, dtype=torch.long)
-
-    # Create Datasets
-    train_dataset = TensorDataset(X_train_t, y_train_t)
-    test_dataset = TensorDataset(X_test_t, y_test_t)
-
-    # Create Loaders with GPU optimizations
-    train_loader = DataLoader(
-        train_dataset, 
-        batch_size=batch_size, 
-        shuffle=True, 
-        num_workers=2, 
-        pin_memory=True,
-        persistent_workers=True if batch_size > 128 else False
-    )
+def get_dataloaders(X, y, batch_size=1024):
+    import torch
+    from torch.utils.data import TensorDataset, DataLoader
     
-    test_loader = DataLoader(
-        test_dataset, 
-        batch_size=batch_size, 
-        shuffle=False,
-        pin_memory=True
-    )
-
-    return train_loader, test_loader
+    X_tensor = torch.tensor(X, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
+    
+    dataset = TensorDataset(X_tensor, y_tensor)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=True)

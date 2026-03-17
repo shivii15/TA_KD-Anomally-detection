@@ -26,8 +26,8 @@ def main():
 
     # 1. Load Data
     print(f"📂 Loading data from: {args.data_path}")
-    X_train, X_test, y_train, y_test, _, le = preprocess_iot_data(args.data_path)
-    train_loader, test_loader = get_dataloaders(X_train, X_test, y_train, y_test, batch_size=args.batch_size)
+    X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=5)
+    train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
 
     # 2. Initialize Teacher
     input_dim = X_train.shape[1]
