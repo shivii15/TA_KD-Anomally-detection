@@ -3,6 +3,10 @@ import numpy as np
 import glob
 import os
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+
 
 def preprocess_iot_data(data_dir, num_parts=3):
     """
@@ -48,12 +52,29 @@ def preprocess_iot_data(data_dir, num_parts=3):
 
     return X_scaled, y, le
 
-def get_dataloaders(X, y, batch_size=1024):
-    import torch
-    from torch.utils.data import TensorDataset, DataLoader
-    
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
-    
-    dataset = TensorDataset(X_tensor, y_tensor)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+
+def get_dataloaders(X, y, batch_size=1024, test_size=0.2):
+    """
+    Splits data and returns two separate DataLoaders.
+    """
+    # 1. Split into Train and Validation sets
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=test_size, random_state=42, stratify=y
+    )
+
+    # 2. Convert to Tensors
+    train_ds = TensorDataset(
+        torch.tensor(X_train, dtype=torch.float32), 
+        torch.tensor(y_train, dtype=torch.long)
+    )
+    val_ds = TensorDataset(
+        torch.tensor(X_val, dtype=torch.float32), 
+        torch.tensor(y_val, dtype=torch.long)
+    )
+
+    # 3. Create Loaders
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader  # This now returns TWO values
