@@ -75,7 +75,7 @@ def main():
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'le': le,
-                'scaler':scaler
+                'scaler':scaler,
                 'input_dim': input_dim,
                 'num_classes': num_classes
             }, args.save_path)
