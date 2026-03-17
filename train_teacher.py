@@ -11,13 +11,15 @@ def main():
     parser = argparse.ArgumentParser(description="Train the Expert Teacher Model")
     
     # --- ARGUMENTS ---
-    parser.add_argument('--data_path', type=str, default="data/CICIoT2023_xxsmall.csv")
+    parser.add_argument('--data_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
     parser.add_argument('--num_parts', type=int, default=5, 
                     help='Number of CSV parts to load (use -1 for ALL parts)')
+    parser.add_argument('--save_scaler', type=str, default='models/scaler.pkl', 
+                    help='Where to save the StandardScaler for the Student to use later')
     
     args = parser.parse_args()
 
@@ -28,9 +30,13 @@ def main():
 
     # 1. Load Data
     print(f"📂 Loading data from: {args.data_path}")
-    X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=5)
-    train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
-
+    #X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=5)
+    #train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
+# Call the updated loader with correct variable mapping
+    X_processed, y_processed, le = preprocess_iot_data(args.data_dir, num_parts=args.num_parts)
+    
+    train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
+    
     # 2. Initialize Teacher
     input_dim = X_train.shape[1]
     num_classes = len(le.classes_)
