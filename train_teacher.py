@@ -37,6 +37,10 @@ def main():
     
     train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
+    print(f"📊 Model Input Dimension: {input_dim}")
+    print(f"🏷️ Class Labels: {list(le.classes_)}")
+
+
     # 2. Initialize Teacher
     input_dim = X_processed.shape[1]
     num_classes = len(le.classes_)
@@ -44,6 +48,8 @@ def main():
     
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
+
+
 
     # 3. Training Loop
     print(f"🚀 Training Teacher for {args.epochs} epochs on {device}...")
