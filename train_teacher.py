@@ -16,6 +16,8 @@ def main():
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
+    parser.add_argument('--num_parts', type=int, default=5, 
+                    help='Number of CSV parts to load (use -1 for ALL parts)')
     
     args = parser.parse_args()
 
