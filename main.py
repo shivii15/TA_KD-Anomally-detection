@@ -41,8 +41,9 @@ def main(args):
     # --- 4. DATA PREPARATION ---
     print("\n[1/4] Loading and Preprocessing Dataset...")
     # Updated to use the num_parts argument for server flexibility
-    X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
-    
+    #X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
+    # Unpack 4 values instead of 3
+    X_train, y_train, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
     train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
     
     input_dim = X_train.shape[1]
