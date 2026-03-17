@@ -37,7 +37,6 @@ def main():
     
     train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
-    print(f"📊 Model Input Dimension: {input_dim}")
     print(f"🏷️ Class Labels: {list(le.classes_)}")
 
 
