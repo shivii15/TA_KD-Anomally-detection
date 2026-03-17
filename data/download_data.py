@@ -1,40 +1,29 @@
 import os
-import requests
-from tqdm import tqdm
+import kagglehub
 
-def download_dataset(url, dest_folder):
-    if not os.path.exists(dest_folder):
-        os.makedirs(dest_folder)
-        print(f"📁 Created folder: {dest_folder}")
+def download_full_dataset():
+    # 1. Define the project root and the path-storage file
+    # This helps your .sh scripts find the data later
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PATH_FILE = os.path.join(BASE_DIR, ".data_path")
 
-    filename = url.split('/')[-1]
-    file_path = os.path.join(dest_folder, filename)
-
-    print(f"⏳ Downloading {filename}...")
+    print("📡 Initializing full CIC-IoT-2023 download via Kagglehub...")
     
-    response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024 # 1 Kibibyte
-
-    t = tqdm(total=total_size, unit='iB', unit_scale=True)
-    with open(file_path, 'wb') as f:
-        for data in response.iter_content(block_size):
-            t.update(len(data))
-            f.write(data)
-    t.close()
-
-    if total_size != 0 and t.n != total_size:
-        print("❌ ERROR: Something went wrong with the download.")
-    else:
-        print(f"✅ Successfully downloaded to: {file_path}")
+    try:
+        # 2. Download the full dataset (all 169 parts)
+        # This will stay in the hidden ~/.cache folder to save project space
+        dataset_path = kagglehub.dataset_download("akashdogra/cic-iot-2023")
+        
+        # 3. Save the path to a hidden file for your Shell Scripts
+        with open(PATH_FILE, "w") as f:
+            f.write(dataset_path)
+            
+        print("\n✅ Download Complete!")
+        print(f"📂 Full dataset located at: {dataset_path}")
+        print(f"📍 Path saved for scripts in: {PATH_FILE}")
+        
+    except Exception as e:
+        print(f"❌ Error during download: {e}")
 
 if __name__ == "__main__":
-    # This is the direct mirror for the 10% sampled CSV (xxsmall) 
-    # useful for initial server testing.
-    DATA_URL = "http://cicresearch.ca/IOTDataset/CIC_IOT_Dataset2023/Dataset/CICIoT2023_xxsmall.csv"
-    
-    # Get the project root directory
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    DATA_DIR = os.path.join(BASE_DIR, "data")
-    
-    download_dataset(DATA_URL, DATA_DIR)
+    download_full_dataset()

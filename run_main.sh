@@ -16,9 +16,13 @@ fi
 
 echo "🚀 Teacher found. Starting Student Distillation... Logs: $LOG_FILE"
 
+# Read the path that download_data.py just saved
+DATA_DIR=$(cat .data_path)
+
+
 # 3. Run Distillation
 nohup python3 -u main.py \
-    --data_path "./data/CICIoT2023_xxsmall.csv" \
+    --data_path "$DATA_DIR" \
     --teacher_path "$TEACHER_MODEL" \
     --epochs 50 \
     --alpha 0.5 \
