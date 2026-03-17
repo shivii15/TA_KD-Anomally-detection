@@ -5,57 +5,69 @@ import torch.nn as nn
 from data.data_loader import preprocess_iot_data, get_dataloaders
 from models.model import TeacherDNN
 import os
+import pandas as pd
 
 def main():
     parser = argparse.ArgumentParser(description="Train the Expert Teacher Model")
     
     # --- ARGUMENTS ---
-    parser.add_argument('--data_path', type=str, default="data/CICIoT2023_small.csv", help='Path to dataset')
-    parser.add_argument('--epochs', type=int, default=10, help='Number of training epochs')
-    parser.add_argument('--batch_size', type=int, default=1024, help='Batch size for training')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--save_path', type=str, default="models/teacher_best.pth", help='Path to save model')
+    parser.add_argument('--data_path', type=str, default="data/CICIoT2023_xxsmall.csv")
+    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=1024)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
     
     args = parser.parse_args()
 
     # --- SETUP ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
+    # Ensure the models directory exists
+    os.makedirs(os.path.dirname(os.path.abspath(args.save_path)), exist_ok=True)
 
     # 1. Load Data
     print(f"📂 Loading data from: {args.data_path}")
     X_train, X_test, y_train, y_test, _, le = preprocess_iot_data(args.data_path)
-    train_loader, _ = get_dataloaders(X_train, X_test, y_train, y_test, batch_size=args.batch_size)
+    train_loader, test_loader = get_dataloaders(X_train, X_test, y_train, y_test, batch_size=args.batch_size)
 
     # 2. Initialize Teacher
-    model = TeacherDNN(input_dim=X_train.shape[1], num_classes=len(le.classes_)).to(device)
+    input_dim = X_train.shape[1]
+    num_classes = len(le.classes_)
+    model = TeacherDNN(input_dim=input_dim, num_classes=num_classes).to(device)
+    
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
 
     # 3. Training Loop
-    print(f"🚀 Training Teacher for {args.epochs} epochs...")
+    print(f"🚀 Training Teacher for {args.epochs} epochs on {device}...")
+    best_loss = float('inf')
+
     for epoch in range(1, args.epochs + 1):
         model.train()
         total_loss = 0
         for batch_x, batch_y in train_loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             optimizer.zero_grad()
-            logits, _ = model(batch_x)
+            logits, _ = model(batch_x) # Your model returns (logits, features)
             loss = criterion(logits, batch_y)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
         
-        print(f"Epoch {epoch}/{args.epochs} | Avg Loss: {total_loss/len(train_loader):.4f}")
+        avg_loss = total_loss / len(train_loader)
+        print(f"Epoch {epoch:02d}/{args.epochs} | Avg Loss: {avg_loss:.4f}")
 
-    # 4. Save
-    # --- IN train_teacher.py ---
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'le': le  # Saving the label encoder is helpful for your paper!
-    }, args.save_path)
+        # --- SMART SAVING ---
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'le': le,
+                'input_dim': input_dim,
+                'num_classes': num_classes
+            }, args.save_path)
+            print(f"💾 Saved improved model to {args.save_path}")
 
-    print(f"✅ Teacher training complete. Saved to: {args.save_path}")
+    print(f"✅ Teacher training complete. Best Loss: {best_loss:.4f}")
 
 if __name__ == "__main__":
     main()
