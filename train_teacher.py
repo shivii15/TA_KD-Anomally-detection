@@ -38,7 +38,7 @@ def main():
     train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
     # 2. Initialize Teacher
-    input_dim = X_train.shape[1]
+    input_dim = X_processed.shape[1]
     num_classes = len(le.classes_)
     model = TeacherDNN(input_dim=input_dim, num_classes=num_classes).to(device)
     
