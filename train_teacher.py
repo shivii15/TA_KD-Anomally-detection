@@ -33,7 +33,7 @@ def main():
     #X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=5)
     #train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
 # Call the updated loader with correct variable mapping
-    X_processed, y_processed, le = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
+    X_processed, y_processed, le, scaler = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
     
     train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
@@ -75,6 +75,7 @@ def main():
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'le': le,
+                'scaler':scaler
                 'input_dim': input_dim,
                 'num_classes': num_classes
             }, args.save_path)
