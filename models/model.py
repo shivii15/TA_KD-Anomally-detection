@@ -39,3 +39,36 @@ class StudentMLP(nn.Module):
         projected_feat = self.projection(feat) # Alignment step
         logits = self.classifier(feat)
         return logits, projected_feat
+    
+# --- ADD THE NEW RESEARCH MODEL ---
+class ResidualBlock(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.BatchNorm1d(dim), # Added for stability in 169-file runs
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(dim, dim),
+            nn.BatchNorm1d(dim)
+        )
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        return self.relu(x + self.fc(x))
+
+class TeacherResNet(nn.Module):
+    def __init__(self, input_dim, num_classes):
+        super().__init__()
+        self.input_layer = nn.Sequential(nn.Linear(input_dim, 512), nn.ReLU())
+        self.res_stack = nn.Sequential(
+            ResidualBlock(512),
+            ResidualBlock(512),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            ResidualBlock(256)
+        )
+        self.output_layer = nn.Linear(256, num_classes)
+
+    def forward(self, x):
+        return self.output_layer(self.res_stack(self.input_layer(x))) 
