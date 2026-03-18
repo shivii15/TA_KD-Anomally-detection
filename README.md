@@ -41,9 +41,9 @@ Standard Knowledge Distillation (KD) assumes the "Teacher" model is an infallibl
 
 | Method | Accuracy | Size (MB) | Robustness (at $\epsilon=0.1$) |
 | --- | --- | --- | --- |
-| Teacher DNN | 78.85% | 40.2 | Low |
-| Baseline Student | 65.12% | **0.08** | Moderate |
-| **TGKD (Proposed)** | **71.37%** | **0.08** | **High** |
+| Teacher DNN |  | | |
+| Baseline Student |  |  |  |
+| **TGKD (Proposed)** |  |  | |
 
 ---
 
