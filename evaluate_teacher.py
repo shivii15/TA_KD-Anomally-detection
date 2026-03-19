@@ -46,13 +46,17 @@ def evaluate_teacher(args):
     checkpoint = torch.load(args.model_path, map_location=device, weights_only=False)    
 
 
-    # This handles both ways the model might have been saved
+    # 2. Extract only the weights (state_dict)
     if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
         state_dict = checkpoint['model_state_dict']
+        print("✅ Found 'model_state_dict' in checkpoint.")
     else:
         state_dict = checkpoint
+        print("ℹ️ Loading raw state_dict.")
 
+    # 3. Load into model
     model.load_state_dict(state_dict)
+    print("🚀 Weights loaded successfully. Starting inference...")
 
     model.eval()
     
