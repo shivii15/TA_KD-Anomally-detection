@@ -16,10 +16,11 @@ def validate(model, loader, criterion, device):
     with torch.no_grad():
         for batch_x, batch_y in loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-            outputs = model(batch_x)
-            loss = criterion(outputs, batch_y)
+            # Unpack the tuple here as well
+            logits, _ = model(batch_x) 
+            loss = criterion(logits, batch_y)
             total_loss += loss.item()
-            _, predicted = outputs.max(1)
+            _, predicted = logits.max(1)
             total += batch_y.size(0)
             correct += predicted.eq(batch_y).sum().item()
     
