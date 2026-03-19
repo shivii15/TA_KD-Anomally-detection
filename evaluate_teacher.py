@@ -7,6 +7,11 @@ import os
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from models.model import TeacherDNN
 from data.data_loader import preprocess_iot_data, get_dataloaders
+import torch
+from sklearn.preprocessing import LabelEncoder
+
+# Add this line to allow the specific sklearn class
+torch.serialization.add_safe_globals([LabelEncoder])
 
 def evaluate_teacher(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
