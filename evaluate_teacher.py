@@ -43,11 +43,17 @@ def evaluate_teacher(args):
         return
 
     print(f"checkpoint Loading weights from {args.model_path}...")
-    checkpoint = torch.load(args.model_path, map_location=device)
-    
-    # Handle both wrapped and raw state_dicts
-    state_dict = checkpoint['model_state_dict'] if 'model_state_dict' in checkpoint else checkpoint
+    checkpoint = torch.load(args.model_path, map_location=device, weights_only=False)    
+
+
+    # This handles both ways the model might have been saved
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        state_dict = checkpoint['model_state_dict']
+    else:
+        state_dict = checkpoint
+
     model.load_state_dict(state_dict)
+
     model.eval()
     
     # 4. Inference Loop
