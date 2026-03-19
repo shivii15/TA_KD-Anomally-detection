@@ -68,8 +68,8 @@ def main():
         for batch_x, batch_y in train_loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             optimizer.zero_grad()
-            outputs = model(batch_x)
-            loss = criterion(outputs, batch_y)
+            logits, features = model(batch_x) 
+            loss = criterion(logits, batch_y)
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
