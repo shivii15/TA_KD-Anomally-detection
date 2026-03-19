@@ -11,7 +11,7 @@ import torch
 from sklearn.preprocessing import LabelEncoder
 
 # Add this line to allow the specific sklearn class
-torch.serialization.add_safe_globals([LabelEncoder])
+torch.serialization.add_safe_globals([np._core.multiarray._reconstruct, np.ndarray, np.dtype])
 
 def evaluate_teacher(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
