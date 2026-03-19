@@ -9,10 +9,19 @@ from models.model import TeacherDNN
 from data.data_loader import preprocess_iot_data, get_dataloaders
 import torch
 from sklearn.preprocessing import LabelEncoder
+import sklearn
 
 # Add this line to allow the specific sklearn class
-torch.serialization.add_safe_globals([np._core.multiarray._reconstruct, np.ndarray, np.dtype])
-
+# Allow all the common objects used in your CIC-IoT preprocessing
+torch.serialization.add_safe_globals([
+    np._core.multiarray._reconstruct, 
+    np.ndarray, 
+    np.dtype, 
+    np.core.multiarray.scalar,
+    sklearn.preprocessing._label.LabelEncoder,
+    # Add the scaler if you saved it too
+    # sklearn.preprocessing._data.StandardScaler 
+])
 def evaluate_teacher(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🖥️ Using device: {device}")
