@@ -14,7 +14,7 @@ import sklearn
 # Add this line to allow the specific sklearn class
 # Allow all the common objects used in your CIC-IoT preprocessing
 torch.serialization.add_safe_globals([
-    np._core.multiarray._reconstruct, 
+    np.core.multiarray._reconstruct, 
     np.ndarray, 
     np.dtype, 
     np.core.multiarray.scalar,
