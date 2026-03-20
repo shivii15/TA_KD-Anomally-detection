@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 from data.data_loader import preprocess_iot_data
 from models.model import TeacherResNet, StudentMLP # Ensure these match your filenames
+import pandas as pd
 
 def evaluate_tgkd(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -122,6 +123,38 @@ def evaluate_tgkd(args):
         f.write(output_content)
 
     print(f"✅ Full report saved to: {output_path}")
+
+
+    def save_to_latex(y_true, y_pred, target_names, filename="results/metrics_table.tex"):
+        # Generate the report as a dictionary
+        report_dict = classification_report(y_true, y_pred, target_names=target_names, output_dict=True)
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(report_dict).transpose()
+        
+        # Format the numbers to 4 decimal places for academic precision
+        latex_string = df.to_latex(
+            index=True, 
+            column_format='|l|c|c|c|r|', 
+            caption="Comparative Analysis of TGKD Student Performance",
+            label="table:tgkd_results",
+            float_format="%.4f"
+        )
+        
+        with open(filename, "w") as f:
+            f.write(latex_string)
+        print(f"📄 LaTeX table saved to {filename}")
+
+    # --- ADD THE CALL HERE ---
+    # Ensure you have defined the save_to_latex function above this
+    save_to_latex(
+        y_true=y_test.cpu().numpy(), 
+        y_pred=s_preds, 
+        target_names=le.classes_,
+        filename="results/student_performance_table_resnet.tex"
+    )
+    
+    print("✅ LaTeX Table Generated for Publication.")
 
 if __name__ == "__main__":
     import argparse
