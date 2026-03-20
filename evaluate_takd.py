@@ -59,8 +59,9 @@ def evaluate_tgkd(args):
     with torch.no_grad():
         t_logits, _ = teacher(X_test)
         t_preds = torch.argmax(t_logits, dim=1).cpu().numpy()
-        
-        s_logits = student(X_test)
+
+        # Unpack the tuple: s_logits contains the predictions, _ ignores the features
+        s_logits, _ = student(X_test) 
         s_preds = torch.argmax(s_logits, dim=1).cpu().numpy()
 
     # 5. Output Report
