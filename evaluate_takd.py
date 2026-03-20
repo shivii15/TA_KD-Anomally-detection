@@ -79,6 +79,49 @@ def evaluate_tgkd(args):
     print("\nDetailed Student Classification Report:")
     print(classification_report(y, s_preds, target_names=le.classes_))
 
+    # --- At the end of evaluate_tgkd(args) ---
+
+    # Calculate Metrics
+    report = classification_report(y_test.cpu(), s_preds, target_names=le.classes_)
+    accuracy_t = (t_preds == y_test.cpu().numpy()).mean()
+    accuracy_s = (s_preds == y_test.cpu().numpy()).mean()
+
+    # Prepare the content string
+    output_content = f"""
+    ==================================================
+            🏆 TGKD RESEARCH EVALUATION REPORT
+    ==================================================
+    Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
+    Dataset: {args.data_path}
+    --------------------------------------------------
+    MODEL PERFORMANCE:
+    ResNet Teacher Accuracy: {accuracy_t:.4f}
+    TGKD Student Accuracy:   {accuracy_s:.4f}
+    Accuracy Gap:            {abs(accuracy_t - accuracy_s):.4f}
+
+    COMPUTATIONAL EFFICIENCY:
+    Teacher Latency: {t_lat:.4f} ms/sample
+    Student Latency: {s_lat:.4f} ms/sample
+    🚀 Speedup:      {t_lat/s_lat:.2f}x Faster
+    --------------------------------------------------
+
+    DETAILED CLASSIFICATION REPORT (STUDENT):
+    {report}
+    ==================================================
+    """
+
+    # 1. Print to console so you can see it now
+    print(output_content)
+
+    # 2. Save to file
+    output_path = "results/tgkd_evaluation_results.txt"
+    os.makedirs("results", exist_ok=True) # Ensure the folder exists
+
+    with open(output_path, "w") as f:
+        f.write(output_content)
+
+    print(f"✅ Full report saved to: {output_path}")
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
