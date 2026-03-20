@@ -27,7 +27,16 @@ def evaluate_tgkd(args):
 
     # Load Distilled Student
     student = StudentMLP(input_dim, num_classes).to(device)
-    student.load_state_dict(torch.load(args.student_path, map_location=device, weights_only=False))
+    checkpoint = torch.load(args.student_path, map_location=device, weights_only=False)
+
+    # Check if it's a dictionary (which your error confirms it is)
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        student.load_state_dict(checkpoint['model_state_dict'])
+        print("✅ Student weights loaded from 'model_state_dict'")
+    else:
+        student.load_state_dict(checkpoint)
+        print("✅ Student weights loaded directly")
+
     student.eval()
 
     # Load Isolation Forest (Gating Module)
