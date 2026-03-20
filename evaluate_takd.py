@@ -2,167 +2,148 @@ import torch
 import torch.nn as nn
 import joblib
 import time
-import os 
+import os
 import numpy as np
-from sklearn.metrics import classification_report, confusion_matrix
-from data.data_loader import preprocess_iot_data
-from models.model import TeacherResNet, StudentMLP # Ensure these match your filenames
 import pandas as pd
+from sklearn.metrics import classification_report, confusion_matrix
+from torch.utils.data import DataLoader, TensorDataset
+from data.data_loader import preprocess_iot_data
+from models.model import TeacherResNet, StudentMLP
+
+def save_to_latex(y_true, y_pred, target_names, filename="results/metrics_table.tex"):
+    """Generates an academic-grade LaTeX table for publication."""
+    report_dict = classification_report(y_true, y_pred, target_names=target_names, output_dict=True)
+    df = pd.DataFrame(report_dict).transpose()
+    
+    # Selecting main metrics to avoid table overflow in double-column papers
+    latex_string = df.to_latex(
+        index=True, 
+        column_format='|l|c|c|c|r|', 
+        caption="Comparative Analysis of TGKD Student Performance on CIC-IoT-2023",
+        label="table:tgkd_results",
+        float_format="%.4f"
+    )
+    
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "w") as f:
+        f.write(latex_string)
+    print(f"📄 LaTeX table saved to {filename}")
 
 def evaluate_tgkd(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🖥️ Evaluating on: {device}")
 
-    # 1. Load Data (Using the final parts for testing)
+    # 1. Load Data (Memory-Safe)
     X, y, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
-    X_test = torch.tensor(X, dtype=torch.float32).to(device)
-    y_test = torch.tensor(y, dtype=torch.long).to(device)
+    X_tensor = torch.tensor(X, dtype=torch.float32)
+    y_tensor = torch.tensor(y, dtype=torch.long)
     
     input_dim = X.shape[1]
     num_classes = len(le.classes_)
 
-    # 2. Load Models
-    # Load ResNet Teacher
+    # 2. Create DataLoader to prevent OOM
+    # A batch size of 4096 is safe for 48GB GPU with ~47 features
+    test_loader = DataLoader(TensorDataset(X_tensor, y_tensor), batch_size=4096, shuffle=False)
+
+    # 3. Load Models
     teacher = TeacherResNet(input_dim, num_classes).to(device)
     teacher.load_state_dict(torch.load(args.teacher_path, map_location=device, weights_only=False)['model_state_dict'])
     teacher.eval()
 
-    # Load Distilled Student
     student = StudentMLP(input_dim, num_classes).to(device)
     checkpoint = torch.load(args.student_path, map_location=device, weights_only=False)
-
-    # Check if it's a dictionary (which your error confirms it is)
+    
     if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
         student.load_state_dict(checkpoint['model_state_dict'])
         print("✅ Student weights loaded from 'model_state_dict'")
     else:
         student.load_state_dict(checkpoint)
         print("✅ Student weights loaded directly")
-
     student.eval()
 
-    # Load Isolation Forest (Gating Module)
-    iso_forest = joblib.load(args.iso_path)
-
-    # 3. Performance & Latency Testing
+    # 4. Latency Benchmarking (Controlled environment)
     print("\n⏱️ Measuring Latency...")
-    
-    def get_latency(model, data):
+    def get_latency(model, data_sample):
+        model.eval()
+        sample = data_sample[:100].to(device)
         start = time.time()
         with torch.no_grad():
-            _ = model(data[:100]) # Benchmark on 100 samples
-        return (time.time() - start) / 100 * 1000
+            for _ in range(100): # Average over 100 runs for stability
+                _ = model(sample)
+        return (time.time() - start) / (100 * 100) * 1000 # ms per sample
 
-    t_lat = get_latency(teacher, X_test)
-    s_lat = get_latency(student, X_test)
+    t_lat = get_latency(teacher, X_tensor)
+    s_lat = get_latency(student, X_tensor)
 
-    # 4. Final Predictions
-    print("📊 Generating Predictions...")
+    # 5. Batch-wise Prediction (The OOM Fix)
+    print(f"📊 Generating Predictions for {len(X_tensor)} samples...")
+    all_t_preds = []
+    all_s_preds = []
+
     with torch.no_grad():
-        t_logits, _ = teacher(X_test)
-        t_preds = torch.argmax(t_logits, dim=1).cpu().numpy()
+        for batch_X, _ in test_loader:
+            batch_X = batch_X.to(device)
+            
+            # Teacher Inference
+            t_logits, _ = teacher(batch_X)
+            all_t_preds.append(torch.argmax(t_logits, dim=1).cpu())
 
-        # Unpack the tuple: s_logits contains the predictions, _ ignores the features
-        s_logits, _ = student(X_test) 
-        s_preds = torch.argmax(s_logits, dim=1).cpu().numpy()
+            # Student Inference (Unpack tuple)
+            s_out = student(batch_X)
+            s_logits = s_out[0] if isinstance(s_out, tuple) else s_out
+            all_s_preds.append(torch.argmax(s_logits, dim=1).cpu())
 
-    # 5. Output Report
-    print("\n" + "="*30)
-    print("🏆 FINAL RESEARCH REPORT")
-    print("="*30)
-    print(f"ResNet Teacher Accuracy: {(t_preds == y).mean():.4f}")
-    print(f"TGKD Student Accuracy:   {(s_preds == y).mean():.4f}")
-    print("-" * 30)
-    print(f"Teacher Latency: {t_lat:.4f} ms/sample")
-    print(f"Student Latency: {s_lat:.4f} ms/sample")
-    print(f"🚀 Speedup: {t_lat/s_lat:.2f}x Faster")
-    print("="*30)
+    t_preds = torch.cat(all_t_preds).numpy()
+    s_preds = torch.cat(all_s_preds).numpy()
 
-    print("\nDetailed Student Classification Report:")
-    print(classification_report(y, s_preds, target_names=le.classes_))
+    # 6. Metrics Calculation
+    accuracy_t = (t_preds == y).mean()
+    accuracy_s = (s_preds == y).mean()
+    report = classification_report(y, s_preds, target_names=le.classes_)
 
-    # --- At the end of evaluate_tgkd(args) ---
-
-    # Calculate Metrics
-    report = classification_report(y_test.cpu(), s_preds, target_names=le.classes_)
-    accuracy_t = (t_preds == y_test.cpu().numpy()).mean()
-    accuracy_s = (s_preds == y_test.cpu().numpy()).mean()
-
-    # Prepare the content string
+    # 7. Comprehensive Reporting
     output_content = f"""
-    ==================================================
-            🏆 TGKD RESEARCH EVALUATION REPORT
-    ==================================================
-    Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
-    Dataset: {args.data_path}
-    --------------------------------------------------
-    MODEL PERFORMANCE:
-    ResNet Teacher Accuracy: {accuracy_t:.4f}
-    TGKD Student Accuracy:   {accuracy_s:.4f}
-    Accuracy Gap:            {abs(accuracy_t - accuracy_s):.4f}
+==================================================
+        🏆 TGKD RESEARCH EVALUATION REPORT
+==================================================
+Date/Time: {time.strftime('%Y-%m-%d %H:%M:%S')}
+Dataset: {args.data_path}
+Samples Evaluated: {len(y)}
+--------------------------------------------------
+MODEL PERFORMANCE:
+ResNet Teacher Accuracy: {accuracy_t:.4f}
+TGKD Student Accuracy:   {accuracy_s:.4f}
+Accuracy Retention:      {(accuracy_s/accuracy_t)*100:.2f}%
 
-    COMPUTATIONAL EFFICIENCY:
-    Teacher Latency: {t_lat:.4f} ms/sample
-    Student Latency: {s_lat:.4f} ms/sample
-    🚀 Speedup:      {t_lat/s_lat:.2f}x Faster
-    --------------------------------------------------
-
-    DETAILED CLASSIFICATION REPORT (STUDENT):
-    {report}
-    ==================================================
-    """
-
-    # 1. Print to console so you can see it now
+COMPUTATIONAL EFFICIENCY:
+Teacher Latency: {t_lat:.4f} ms/sample
+Student Latency: {s_lat:.4f} ms/sample
+🚀 Speedup:      {t_lat/s_lat:.2f}x Faster
+--------------------------------------------------
+DETAILED STUDENT CLASSIFICATION REPORT:
+{report}
+==================================================
+"""
     print(output_content)
 
-    # 2. Save to file
-    output_path = "results/tgkd_evaluation_results.txt"
-    os.makedirs("results", exist_ok=True) # Ensure the folder exists
-
-    with open(output_path, "w") as f:
+    # Save Results
+    os.makedirs("results", exist_ok=True)
+    with open("results/tgkd_evaluation_results.txt", "w") as f:
         f.write(output_content)
 
-    print(f"✅ Full report saved to: {output_path}")
-
-
-    def save_to_latex(y_true, y_pred, target_names, filename="results/metrics_table.tex"):
-        # Generate the report as a dictionary
-        report_dict = classification_report(y_true, y_pred, target_names=target_names, output_dict=True)
-        
-        # Convert to DataFrame
-        df = pd.DataFrame(report_dict).transpose()
-        
-        # Format the numbers to 4 decimal places for academic precision
-        latex_string = df.to_latex(
-            index=True, 
-            column_format='|l|c|c|c|r|', 
-            caption="Comparative Analysis of TGKD Student Performance",
-            label="table:tgkd_results",
-            float_format="%.4f"
-        )
-        
-        with open(filename, "w") as f:
-            f.write(latex_string)
-        print(f"📄 LaTeX table saved to {filename}")
-
-    # --- ADD THE CALL HERE ---
-    # Ensure you have defined the save_to_latex function above this
-    save_to_latex(
-        y_true=y_test.cpu().numpy(), 
-        y_pred=s_preds, 
-        target_names=le.classes_,
-        filename="results/student_performance_table_resnet.tex"
-    )
+    # Save LaTeX Table for Overleaf
+    save_to_latex(y, s_preds, le.classes_, "results/student_performance_table_resnet.tex")
     
-    print("✅ LaTeX Table Generated for Publication.")
+    print("✅ Evaluation Complete. Results and LaTeX tables are in the /results folder.")
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, required=True)
-    parser.add_argument('--teacher_path', type=str, required=True)
-    parser.add_argument('--student_path', type=str, required=True)
-    parser.add_argument('--iso_path', type=str, required=True)
-    parser.add_argument('--num_parts', type=int, default=5)
+    parser = argparse.ArgumentParser(description="Evaluate TGKD Teacher-Student Framework")
+    parser.add_argument('--data_path', type=str, required=True, help="Path to CIC-IoT CSVs")
+    parser.add_argument('--teacher_path', type=str, required=True, help="Path to Teacher ResNet .pth")
+    parser.add_argument('--student_path', type=str, required=True, help="Path to Student .pth")
+    parser.add_argument('--iso_path', type=str, required=True, help="Path to Isolation Forest .pkl")
+    parser.add_argument('--num_parts', type=int, default=5, help="Number of data parts to evaluate")
+    
     args = parser.parse_args()
     evaluate_tgkd(args)
