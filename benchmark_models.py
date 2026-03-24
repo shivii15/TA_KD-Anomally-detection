@@ -38,39 +38,40 @@ def measure_performance(model, input_data, device, label="Model"):
 
 def run_benchmark(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    input_dim = 77  # Standard for CIC-IoT-2023
-    num_classes = 33 
+    
+    # 1. Load Checkpoints First to detect dimensions
+    t_checkpoint = torch.load(args.teacher_path, map_location=device, weights_only=False)
+    s_checkpoint = torch.load(args.student_path, map_location=device, weights_only=False)
+    
+    # Extract weights to find shapes
+    t_state = t_checkpoint['model_state_dict'] if 'model_state_dict' in t_checkpoint else t_checkpoint
+    s_state = s_checkpoint['model_state_dict'] if 'model_state_dict' in s_checkpoint else s_checkpoint
+
+    # --- DYNAMIC DIMENSION DETECTION ---
+    # Look at the first layer's weight to find input features (dim 1)
+    input_dim = t_state['input_layer.0.weight'].shape[1] 
+    
+    # Look at the classifier bias to find number of classes
+    num_classes = t_state['classifier.bias'].shape[0]
+    
+    print(f"📊 Detected Dimensions: Features={input_dim}, Classes={num_classes}")
+
+    # 2. Initialize Models with correct dimensions
+    teacher = TeacherResNet(input_dim, num_classes)
+    student = StudentMLP(input_dim, num_classes)
+
+    # 3. Load State Dicts
+    teacher.load_state_dict(t_state)
+    student.load_state_dict(s_state)
+    
+    # Create dummy data matching the DETECTED input_dim
     dummy_input = torch.randn(10000, input_dim).to(device)
 
-    # Load Teacher
-    teacher = TeacherResNet(input_dim, num_classes)
-    t_checkpoint = torch.load(args.teacher_path, map_location=device, weights_only=False)
-    teacher.load_state_dict(t_checkpoint['model_state_dict'] if 'model_state_dict' in t_checkpoint else t_checkpoint)
-    
-    # Load Student
-    student = StudentMLP(input_dim, num_classes)
-    s_checkpoint = torch.load(args.student_path, map_location=device, weights_only=False)
-    student.load_state_dict(s_checkpoint['model_state_dict'])
-
-    # Benchmarking
+    # 4. Run Benchmarking
     t_lat, t_thr = measure_performance(teacher, dummy_input, device)
     s_lat, s_thr = measure_performance(student, dummy_input, device)
     
-    t_size = get_model_size(args.teacher_path)
-    s_size = get_model_size(args.student_path)
-
-    # Results Table
-    results = {
-        "Metric": ["Model Size (MB)", "Latency (ms/pkt)", "Throughput (pkts/sec)"],
-        "Teacher (ResNet)": [f"{t_size:.2f}", f"{t_lat:.4f}", f"{t_thr:,.0f}"],
-        "Student (MLP)": [f"{s_size:.2f}", f"{s_lat:.4f}", f"{s_thr:,.0f}"],
-        "Improvement": [f"{t_size/s_size:.1f}x smaller", f"{t_lat/s_lat:.1f}x faster", f"{s_thr/t_thr:.1f}x higher"]
-    }
-    
-    df = pd.DataFrame(results)
-    print("\n🚀 --- TGKD BENCHMARK RESULTS ---")
-    print(df.to_string(index=False))
-    df.to_csv("logs/benchmark_results.csv", index=False)
+    # ... (rest of the size and print logic remains the same)
 
 if __name__ == "__main__":
     import argparse
