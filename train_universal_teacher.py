@@ -79,3 +79,6 @@ def main():
         "val_acc": [],
         "lr": []
     }
+
+if __name__ == "__main__":
+    main()
