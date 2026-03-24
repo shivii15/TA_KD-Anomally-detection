@@ -36,4 +36,4 @@ def plot_training_results(log_path):
     ax2.legend()
 
     plt.tight_layout()
-    plt.savefig(log_path.replace
+    plt.savefig(log_path.replace)
