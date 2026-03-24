@@ -32,23 +32,20 @@ def plot_training_results(log_path):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     epochs = range(1, len(history['train_loss']) + 1)
 
-    # 📉 Panel 1: Loss Convergence
+  # 📉 Panel 1: Loss Convergence
     ax1.plot(epochs, history['train_loss'], label='Training Loss', color='#1f77b4', linewidth=1.5)
-    ax1.plot(epochs, history['val_loss'], label='Validation Loss', color='#ff7f0e', linestyle='--', linewidth=1.5)
+    
+    # Check if val_loss exists before plotting
+    if 'val_loss' in history:
+        ax1.plot(epochs, history['val_loss'], label='Validation Loss', color='#ff7f0e', linestyle='--', linewidth=1.5)
+    else:
+        print("ℹ️ Note: 'val_loss' not found in logs, plotting Training Loss only.")
+
     ax1.set_title('Loss Convergence (Distillation Phase)', fontsize=14, fontweight='bold')
     ax1.set_xlabel('Epochs', fontsize=12)
-    ax1.set_ylabel('Cross-Entropy Loss', fontsize=12)
+    ax1.set_ylabel('Loss Value', fontsize=12)
     ax1.legend(loc='upper right')
     ax1.grid(True, alpha=0.3)
-
-    # 📈 Panel 2: Accuracy Trend
-    ax2.plot(epochs, history['val_acc'], label='Validation Accuracy', color='#2ca02c', linewidth=2)
-    ax2.set_title('Model Accuracy Performance', fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Epochs', fontsize=12)
-    ax2.set_ylabel('Accuracy (%)', fontsize=12)
-    ax2.set_ylim([min(history['val_acc']) - 5, 100]) # Adaptive zoom
-    ax2.legend(loc='lower right')
-    ax2.grid(True, alpha=0.3)
 
     # --- SAVE RESULTS ---
     # Generates name like: logs/Teacher_v2.1_timestamp_plot.png
