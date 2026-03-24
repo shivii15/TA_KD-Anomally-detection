@@ -73,12 +73,62 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     # 5. History Tracking
-    history = {
-        "train_loss": [],
-        "val_loss": [],
-        "val_acc": [],
-        "lr": []
-    }
+    history = {"train_loss": [], "val_loss": [], "val_acc": [], "lr": []}
+    best_val_acc = 0.0
+    epochs_no_improve = 0
+    
+    print(f"🟢 Starting {args.model_type.upper()} Teacher Training...")
+
+    # 6. THE TRAINING LOOP (Crucial - Was missing before!)
+    for epoch in range(1, args.epochs + 1):
+        model.train()
+        train_loss = 0
+        train_pbar = tqdm(train_loader, desc=f"Epoch [{epoch}/{args.epochs}]", unit="batch")
+        
+        for batch_x, batch_y in train_pbar:
+            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+            optimizer.zero_grad()
+            logits, _ = model(batch_x) 
+            loss = criterion(logits, batch_y)
+            loss.backward()
+            optimizer.step()
+            
+            train_loss += loss.item()
+            train_pbar.set_postfix({"loss": f"{loss.item():.4f}"})
+
+        avg_train_loss = train_loss / len(train_loader)
+        avg_val_loss, val_acc = validate(model, val_loader, criterion, device)
+        
+        # Log metrics
+        history["train_loss"].append(avg_train_loss)
+        history["val_loss"].append(avg_val_loss)
+        history["val_acc"].append(val_acc)
+        history["lr"].append(optimizer.param_groups[0]['lr'])
+        scheduler.step()
+
+        print(f"📊 Epoch {epoch} Summary: Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.2f}%")
+
+        # Checkpoint Management (Saving the model)
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            epochs_no_improve = 0
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'classes': le.classes_,
+                'scaler': scaler,
+                'arch': args.model_type,
+                'val_acc': val_acc
+            }, full_save_path)
+            print(f"⭐ New Best Model Saved to: {full_save_path}")
+        else:
+            epochs_no_improve += 1
+            if epochs_no_improve >= args.patience:
+                print(f"🛑 Early stopping triggered.")
+                break
+
+        # Save History JSON after every epoch
+        with open(log_path, 'w') as f:
+            json.dump(history, f, indent=4)
 
 if __name__ == "__main__":
     main()
