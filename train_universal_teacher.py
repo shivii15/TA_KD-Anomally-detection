@@ -72,4 +72,10 @@ def main():
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     criterion = nn.CrossEntropyLoss()
 
-    history = {"train_loss": [],
+    # 5. History Tracking
+    history = {
+        "train_loss": [],
+        "val_loss": [],
+        "val_acc": [],
+        "lr": []
+    }
