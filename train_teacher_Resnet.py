@@ -6,7 +6,7 @@ import os
 import json
 from datetime import datetime
 from tqdm import tqdm  # ✅ New Import
-from data.data_loader import preprocess_iot_data, get_dataloaders
+from data.data_loader import load_dataset, get_dataloaders
 from models.model import TeacherResNet
 
 def validate(model, loader, criterion, device):
@@ -27,6 +27,11 @@ def validate(model, loader, criterion, device):
 
 def main():
     parser = argparse.ArgumentParser(description="SOTA Teacher Training with Live Progress")
+    parser.add_argument(
+        "--dataset",
+        default="cic",
+        choices=["cic", "nbaiot"]
+    )
     parser.add_argument('--data_path', type=str, required=True)
     parser.add_argument('--num_parts', type=int, default=-1)
     parser.add_argument('--epochs', type=int, default=50)
@@ -46,7 +51,7 @@ def main():
     log_path = f"logs/{args.save_name}_{timestamp}_history.json"
 
     # 2. Data & Model
-    X, y, le, scaler = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
+    X, y, le, scaler = load_dataset(args)
     train_loader, val_loader = get_dataloaders(X, y, batch_size=args.batch_size)
     model = TeacherResNet(X.shape[1], len(le.classes_)).to(device)
     

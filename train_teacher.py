@@ -2,7 +2,8 @@ import argparse
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from data.data_loader import preprocess_iot_data, get_dataloaders
+#from data.data_loader import preprocess_iot_data, get_dataloaders
+from data.data_loader import load_dataset, get_dataloaders
 from models.model import TeacherDNN
 import os
 import pandas as pd
@@ -11,6 +12,11 @@ def main():
     parser = argparse.ArgumentParser(description="Train the Expert Teacher Model")
     
     # --- ARGUMENTS ---
+    parser.add_argument(
+        "--dataset",
+        default="cic",
+        choices=["cic", "nbaiot"]
+    )
     parser.add_argument('--data_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=1024)
@@ -33,8 +39,7 @@ def main():
     #X_train, y_train, le = preprocess_iot_data(args.data_path, num_parts=5)
     #train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
 # Call the updated loader with correct variable mapping
-    X_processed, y_processed, le, scaler = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
-    
+    X_processed, y_processed, le, scaler = load_dataset(args)    
     train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
     print(f"🏷️ Class Labels: {list(le.classes_)}")

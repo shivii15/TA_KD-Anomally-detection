@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 from tqdm import tqdm
 
-from data.data_loader import preprocess_iot_data, get_dataloaders
+from data.data_loader import load_dataset, get_dataloaders
 from models.model import TeacherResNet, TeacherTransformer, TeacherLSTM, StudentMLP
 
 # ---------------------------
@@ -42,6 +42,13 @@ def validate(model, loader, device):
 # ---------------------------
 def main():
     parser = argparse.ArgumentParser(description="Multi-Teacher TGKD: Student Distillation")
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="cic",
+        choices=["cic", "nbaiot"],
+        help="Dataset to use"
+    )
     parser.add_argument('--data_path', type=str, required=True)
     # Teacher Paths
     parser.add_argument('--resnet_path', type=str, required=True, help="Path to trained ResNet teacher")
@@ -68,7 +75,8 @@ def main():
     log_path = f"logs/{args.save_name}_{timestamp}_history.json"
 
     # 2. Load Data
-    X, y, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
+    #X, y, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
+    X, y, le, scaler = load_dataset(args)
     train_loader, val_loader = get_dataloaders(X, y, batch_size=args.batch_size)
     num_classes = len(le.classes_)
     input_dim = X.shape[1]
