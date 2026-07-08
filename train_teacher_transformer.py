@@ -2,25 +2,48 @@ import torch
 import torch.nn as nn
 
 class TeacherTransformer(nn.Module):
-    def __init__(self, input_dim, num_classes):
-        super(TeacherTransformer, self). __init__()
-        # Project 1D features into a higher-dimensional embedding space
-        self.embedding = nn.Linear(input_dim, 128)
-        
-        # Transformer Encoder Block
+    """
+    Transformer-based Teacher
+    Captures global feature relationships using self-attention.
+    Returns:
+        logits   : Classification output
+        features : 256-dimensional representation for feature distillation
+    """
+
+    def __init__(self, input_dim, num_classes, embed_dim=256):
+        super().__init__()
+
+        self.embedding = nn.Linear(input_dim, embed_dim)
+
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=128, 
-            nhead=8, 
-            dim_feedforward=256, 
+            d_model=embed_dim,
+            nhead=8,
+            dim_feedforward=512,
+            dropout=0.1,
             batch_first=True
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=3)
-        
-        self.fc = nn.Linear(128, num_classes)
+
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=3
+        )
+
+        self.classifier = nn.Linear(embed_dim, num_classes)
 
     def forward(self, x):
-        # x shape: (batch, features) -> transform to (batch, 1, 128)
-        x = self.embedding(x).unsqueeze(1)
-        x = self.transformer(x)
-        x = x.squeeze(1) # Back to (batch, 128)
-        return self.fc(x)
+
+        # (batch, features)
+        x = self.embedding(x)
+
+        # (batch, 1, embed_dim)
+        x = x.unsqueeze(1)
+
+        # Self-attention
+        features = self.transformer(x)
+
+        # (batch, embed_dim)
+        features = features.squeeze(1)
+
+        logits = self.classifier(features)
+
+        return logits, features
