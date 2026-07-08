@@ -71,28 +71,54 @@ class TGKD_Trainer:
                 x_input=x
                 )
 
-                print("\nTrust Module Output")
+                if i == 0:
 
-                for k, v in trust_outputs.items():
+                    print("\n===============Trust Module Output=================")
 
-                    print(k, v.shape)
+                    print("\nTrust Statistics")
 
-                trust_score = trust_outputs["trust_score"]
+                    print(f"Confidence   : {confidence.mean():.4f}")
+
+                    print(f"Entropy      : {entropy.mean():.4f}")
+
+                    print(f"Anomaly      : {anomaly.mean():.4f}")
+
+                    print(f"Disagreement : {disagreement.mean():.4f}")
+
+                    print(f"Trust Score  : {trust_score.mean():.4f}")
+
+                    print(f"Temperature  : {temperature.mean():.4f}")
+                
+                    print("==================================\n")
+
 
                 temperature = trust_outputs["temperature"]
+                trust_score = trust_outputs["trust_score"]
+                confidence = trust_outputs["confidence"]
+                entropy = trust_outputs["entropy_trust"]
+                anomaly = trust_outputs["anomaly_score"]
+                disagreement = trust_outputs["disagreement"]
                 
+
                 # --- LOSS CALCULATION ---
                 l_ce = self.criterion_ce(s_logits, y)
                 
                 # Temperature Scaling with Trust Module
-                t_adapt = t_adapt.unsqueeze(1) 
-                soft_targets = F.softmax(t_logits / t_adapt, dim=1)
-                soft_log_probs = F.log_softmax(s_logits / t_adapt, dim=1)
-                
+                temperature_batch = temperature.unsqueeze(1) 
+                soft_targets = F.softmax(
+                    t_logits / temperature_batch,
+                    dim=1
+                ) 
+                soft_log_probs = F.log_softmax(
+                    s_logits / temperature_batch,
+                    dim=1
+                )                
                 # KD Loss (Trust-Gated)
                 l_kd = self.criterion_kd(soft_log_probs, soft_targets)
-                l_kd = (l_kd * (t_adapt.squeeze()**2)).mean()
-                
+                l_kd = (
+                    l_kd *
+                    (temperature ** 2)
+                ).mean()                
                 # Feature Alignment Loss
                 l_feat = self.criterion_feat(s_feat, t_feat)
                 
