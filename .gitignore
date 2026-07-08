@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+tgkd/
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Datasets
+data/*.csv
+
+# Model checkpoints
+*.pth
+*.pt
+*.pkl
+
+# Jupyter
+.ipynb_checkpoints/
+
+#drawio
+*.drawio

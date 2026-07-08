@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 
 import torch
@@ -137,7 +138,7 @@ class TGKD_Trainer:
                 plt.show()
 
         return {
-                "accuracy": acc, "precision": precision, "recall": recall, "f1": f1
+                "accuracy": acc, "precision": precision, "recall": recall, "f1": f1, 'timestamp': datetime.now().strftime("%H:%M:%S")
             }
     
     def print_performance(self, device, total_packets, duration):

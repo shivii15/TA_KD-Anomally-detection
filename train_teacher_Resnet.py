@@ -148,8 +148,14 @@ def main():
         with open(log_path, 'w') as f:
             json.dump(history, f, indent=4)
 
-        print(f"📊 Summary: Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.2f}% | LR: {optimizer.param_groups[0]['lr']:.6f}")
-
+        #print(f"📊 Summary: Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.2f}% | LR: {optimizer.param_groups[0]['lr']:.6f}")
+        print(
+            f"📊 Summary | "
+            f"Train Loss: {avg_train_loss:.4f} | "
+            f"Val Loss: {avg_val_loss:.4f} | "
+            f"Val Acc: {val_acc:.2f}% | "
+            f"LR: {optimizer.param_groups[0]['lr']:.6f}"
+        )
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             epochs_no_improve = 0
