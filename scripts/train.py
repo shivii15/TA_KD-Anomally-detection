@@ -60,10 +60,20 @@ class TGKD_Trainer:
                 with torch.no_grad():
                     t_logits, t_feat = self.teacher(x)
                     # Get trust weight (A)
-                    t_adapt, _ = self.trust_module(t_logits, x) # Calling the module directly triggers forward()
+                    #t_adapt, _ = self.trust_module(t_logits, x) # Calling the module directly triggers forward()
                     #t_adapt, _ = self.trust_module.calculate_trust(t_logits, x)
                 
                 s_logits, s_feat = self.student(x)
+
+                trust_outputs = self.trust_module(
+                teacher_logits=t_logits,
+                student_logits=s_logits,
+                x_input=x
+                )
+
+                trust_score = trust_outputs["trust_score"]
+
+                temperature = trust_outputs["temperature"]
                 
                 # --- LOSS CALCULATION ---
                 l_ce = self.criterion_ce(s_logits, y)
