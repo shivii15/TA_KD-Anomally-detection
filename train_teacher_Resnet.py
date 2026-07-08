@@ -61,13 +61,11 @@ def main():
     os.makedirs('models', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-
     save_path = (
-        f"models/{args.teacher}_{args.dataset}_{timestamp}.pth"
+        f"models/TeacherResNet_{args.dataset}_{timestamp}.pth"
     )
     #full_save_path = f"models/{args.save_name}_{timestamp}.pth"
-    log_path = f"logs/{args.save_name}_{timestamp}_history.json"
+    log_path = f"logs/TeacherResNet_{args.save_name}_{timestamp}_history.json"
 
     # 2. Data & Model
     X, y, le, scaler = load_dataset(args)
@@ -115,7 +113,7 @@ def main():
         "lr": []
     }
     
-    print(f"🟢 Training: {args.save_name}")
+    print("🟢 Training: TeacherResNet")
     print("\nClasses")
 
     for c in le.classes_:
@@ -187,7 +185,8 @@ def main():
             if epochs_no_improve >= args.patience:
                 print(f"🛑 Early stopping triggered.")
                 break
-
+        
+        history["best_val_loss"].append(best_val_loss)
         print(f"Best Validation Loss : {best_val_loss:.4f}")
 
 if __name__ == "__main__":
