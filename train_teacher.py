@@ -154,7 +154,10 @@ def main():
 
     history = {
         "train_loss": [],
-        "val_loss": []
+        "val_loss": [],
+        "val_acc": [],
+        "best_val_loss": [],
+        "lr": []
     }
 
     # 3. Training Loop
@@ -230,6 +233,8 @@ def main():
 
         history["train_loss"].append(avg_loss)
         history["val_loss"].append(val_loss)
+        history["best_val_loss"].append(best_loss)
+        history["lr"].append(optimizer.param_groups[0]["lr"])
 
         with open(log_path, "w") as f:
             json.dump(history, f, indent=4)
