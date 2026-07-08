@@ -4,7 +4,13 @@ import torch.optim as optim
 import torch.nn as nn
 #from data.data_loader import preprocess_iot_data, get_dataloaders
 from data.data_loader import load_dataset, get_dataloaders
-from models.model import TeacherDNN
+from datetime import datetime
+from models.model import (
+    TeacherDNN,
+    TeacherResNet,
+    TeacherTransformer,
+    TeacherLSTM
+)
 import os
 import pandas as pd
 
@@ -18,16 +24,28 @@ def main():
         choices=["cic", "nbaiot"]
     )
     parser.add_argument(
-    "--data_path",
-    type=str,
-    default=None,
-    help="Dataset directory"
-)
+        "--teacher",
+        type=str,
+        default="dnn",
+        choices=[
+            "dnn",
+            "resnet",
+            "transformer",
+            "lstm"
+        ],
+        help="Teacher architecture"
+    )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=None,
+        help="Dataset directory"
+    )
     #parser.add_argument('--data_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
+    #parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
     parser.add_argument('--num_parts', type=int, default=5, 
                     help='Number of CSV parts to load (use -1 for ALL parts)')
     parser.add_argument('--save_scaler', type=str, default='models/scaler.pkl', 
@@ -39,6 +57,16 @@ def main():
         raise ValueError(
             "--data_path is required when using the CIC-IoT dataset."
         )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
+    save_path = (
+        f"models/Teacher_{args.teacher}_{args.dataset}_{timestamp}.pth"
+    )
+
+    log_path = (
+        f"logs/Teacher_{args.teacher}_{args.dataset}_{timestamp}.json"
+    )
 
     # --- SETUP ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,8 +102,42 @@ def main():
     print(f"Batch Size   : {args.batch_size}")
     print("-" * 40)
 
-    model = TeacherDNN(input_dim=input_dim, num_classes=num_classes).to(device)
-    
+    #model = TeacherDNN(input_dim=input_dim, num_classes=num_classes).to(device)
+    if args.teacher == "dnn":
+
+        model = TeacherDNN(
+            input_dim,
+            num_classes
+        )
+
+    elif args.teacher == "resnet":
+
+        model = TeacherResNet(
+            input_dim,
+            num_classes
+        )
+
+    elif args.teacher == "transformer":
+
+        model = TeacherTransformer(
+            input_dim,
+            num_classes
+        )
+
+    elif args.teacher == "lstm":
+
+        model = TeacherLSTM(
+            input_dim,
+            num_classes
+        )
+
+    else:
+
+        raise ValueError(
+            f"Unknown teacher : {args.teacher}"
+        )
+
+    model = model.to(device)
     num_params = sum(
         p.numel()
         for p in model.parameters()
@@ -90,7 +152,14 @@ def main():
 
 
     # 3. Training Loop
-    print(f"🚀 Training Teacher for {args.epochs} epochs on {device}...")
+    #print(f"🚀 Training Teacher for {args.epochs} epochs on {device}...")
+    print("\nTeacher Configuration")
+    print("-" * 40)
+    print(f"Teacher      : {args.teacher}")
+    print(f"Dataset      : {args.dataset}")
+    print(f"Device       : {device}")
+    print(f"Epochs       : {args.epochs}")
+    print("-" * 40)
     best_loss = float('inf')
 
     for epoch in range(1, args.epochs + 1):
