@@ -47,7 +47,7 @@ def train_anomaly_module(args):
             f"Could not find a benign class.\nAvailable classes : {list(le.classes_)}"
         )
     
-    
+
     # 3. Filter for Benign samples (Semi-Supervised Approach)
     X_benign = X[y == benign_idx]
     
@@ -73,23 +73,73 @@ def train_anomaly_module(args):
     os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
     
     # We include the scaler so the Trust-Gate can normalize raw inputs in real-time
+    #model_package = {
+    #    'model': iso_forest,
+    #    'scaler': scaler,
+    #    'benign_label': le.classes_[benign_idx],
+    #    'features_count': X.shape[1],
+    #    'train_samples': len(X_benign),
+    #    'timestamp': timestamp
+    #}
+
     model_package = {
-        'model': iso_forest,
-        'scaler': scaler,
-        'benign_label': le.classes_[benign_idx],
-        'features_count': X.shape[1],
-        'train_samples': len(X_benign),
-        'timestamp': timestamp
+
+        # --------------------------------------------------
+        # Model
+        # --------------------------------------------------
+        "model": iso_forest,
+
+        # --------------------------------------------------
+        # Dataset Information
+        # --------------------------------------------------
+        "dataset": args.dataset,
+        "timestamp": timestamp,
+
+        # --------------------------------------------------
+        # Preprocessing
+        # --------------------------------------------------
+        "scaler": scaler,
+        "label_encoder": le,
+
+        # --------------------------------------------------
+        # Dataset Statistics
+        # --------------------------------------------------
+        "feature_dim": X.shape[1],
+        "num_classes": len(le.classes_),
+        "train_samples": len(X_benign),
+
+        # --------------------------------------------------
+        # Labels
+        # --------------------------------------------------
+        "classes": list(le.classes_),
+        "benign_label": le.classes_[benign_idx],
+
+        # --------------------------------------------------
+        # Isolation Forest Parameters
+        # --------------------------------------------------
+        "n_estimators": args.n_estimators,
+        "contamination": args.contamination
+
     }
     
     joblib.dump(model_package, args.save_path)
-    
-    print("-" * 30)
-    print(f"✅ SUCCESS: Anomaly Module Ready")
-    print(f"📂 Saved to: {args.save_path}")
-    print(f"📏 Feature Dimension: {X.shape[1]}")
-    print(f"🌲 Trees: {args.n_estimators} | Contamination: {args.contamination}")
-    print("-" * 30)
+        
+    print("\n" + "-" * 50)
+
+    print("✅ Isolation Forest Trained Successfully")
+
+    print("-" * 50)
+
+    print(f"Dataset        : {args.dataset}")
+    print(f"Samples        : {len(X_benign):,}")
+    print(f"Feature Dim    : {X.shape[1]}")
+    print(f"Benign Class   : {le.classes_[benign_idx]}")
+    print(f"Trees          : {args.n_estimators}")
+    print(f"Contamination  : {args.contamination}")
+
+    print(f"\nSaved Model    : {args.save_path}")
+
+    print("-" * 50)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SOTA Anomaly Module for Multi-Teacher TGKD")
