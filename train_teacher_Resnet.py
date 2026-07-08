@@ -32,7 +32,13 @@ def main():
         default="cic",
         choices=["cic", "nbaiot"]
     )
-    parser.add_argument('--data_path', type=str, required=True)
+    #parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=None,
+        help="Dataset directory (optional for N-BaIoT)"
+    )
     parser.add_argument('--num_parts', type=int, default=-1)
     parser.add_argument('--epochs', type=int, default=50)
     parser.add_argument('--batch_size', type=int, default=4096)
@@ -57,9 +63,34 @@ def main():
 
     # 2. Data & Model
     X, y, le, scaler = load_dataset(args)
+
+    print(f"\nDataset : {args.dataset}")
+
+    input_dim = X.shape[1]
+    num_classes = len(le.classes_)
+
+    print("\nDataset Summary")
+    print("-" * 40)
+    print(f"Samples      : {len(X):,}")
+    print(f"Features     : {input_dim}")
+    print(f"Classes      : {num_classes}")
+    print(f"Batch Size   : {args.batch_size}")
+    print("-" * 40)
+
     train_loader, val_loader = get_dataloaders(X, y, batch_size=args.batch_size)
-    model = TeacherResNet(X.shape[1], len(le.classes_)).to(device)
-    
+    model = TeacherResNet(
+        input_dim,
+        num_classes
+    ).to(device)        
+
+    num_params = sum(
+        p.numel()
+        for p in model.parameters()
+        if p.requires_grad
+    )
+
+    print(f"Trainable Parameters : {num_params:,}")
+
     optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-2)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
     criterion = nn.CrossEntropyLoss()
@@ -69,6 +100,10 @@ def main():
     epochs_no_improve = 0
     
     print(f"🟢 Training: {args.save_name}")
+    print("\nClasses")
+
+    for c in le.classes_:
+        print(" •", c)
 
     for epoch in range(1, args.epochs + 1):
         model.train()
@@ -97,7 +132,12 @@ def main():
         history["val_loss"].append(avg_val_loss)
         history["val_acc"].append(val_acc)
         history["lr"].append(optimizer.param_groups[0]['lr'])
+        history["best_val_loss"].append(best_val_loss)
         scheduler.step()
+
+        print(
+            f"Best Validation Loss : {best_val_loss:.4f}"
+        )
 
         # ✅ Robust JSON Save (Prevents empty files)
         with open(log_path, 'w') as f:
@@ -108,7 +148,20 @@ def main():
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             epochs_no_improve = 0
-            torch.save({'model_state_dict': model.state_dict(), 'classes': le.classes_}, full_save_path)
+            
+            #torch.save({'model_state_dict': model.state_dict(), 'classes': le.classes_}, full_save_path)
+            torch.save({
+                "dataset": args.dataset,
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "scheduler_state_dict": scheduler.state_dict(),
+                "best_val_loss": best_val_loss,
+                "le": le,
+                "scaler": scaler,
+                "input_dim": input_dim,
+                "num_classes": num_classes
+            }, full_save_path)
             print(f"⭐ Best Model Saved to {full_save_path}")
         else:
             epochs_no_improve += 1
