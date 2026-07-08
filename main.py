@@ -72,6 +72,12 @@ def main():
     parser.add_argument('--save_name', type=str, default="Student_MultiTeacher_TGKD")
     args = parser.parse_args()
 
+    if args.dataset == "cic" and args.data_path is None:
+        raise ValueError(
+            "--data_path is required when using the CIC-IoT dataset."
+        )
+
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     

@@ -17,7 +17,13 @@ def main():
         default="cic",
         choices=["cic", "nbaiot"]
     )
-    parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument(
+    "--data_path",
+    type=str,
+    default=None,
+    help="Dataset directory"
+)
+    #parser.add_argument('--data_path', type=str, required=True)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -28,6 +34,11 @@ def main():
                     help='Where to save the StandardScaler for the Student to use later')
     
     args = parser.parse_args()
+
+    if args.dataset == "cic" and args.data_path is None:
+        raise ValueError(
+            "--data_path is required when using the CIC-IoT dataset."
+        )
 
     # --- SETUP ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
