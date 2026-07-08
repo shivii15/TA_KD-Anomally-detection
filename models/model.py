@@ -46,44 +46,86 @@ class TeacherResNet(nn.Module):
         logits = self.classifier(features)
         return logits, features
 
+
 class TeacherTransformer(nn.Module):
-    """Attention-Based Teacher: Relational Expert for Feature Correlations."""
+    """
+    Transformer-based Teacher
+    Captures global feature relationships using self-attention.
+    Returns:
+        logits   : Classification output
+        features : 256-dimensional representation for feature distillation
+    """
+
     def __init__(self, input_dim, num_classes, embed_dim=256):
         super().__init__()
-        self.input_proj = nn.Linear(input_dim, embed_dim)
-        
-        # Standard Transformer Encoder for Tabular Feature Attention
+        self.embedding = nn.Linear(input_dim, embed_dim)
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embed_dim, nhead=8, dim_feedforward=512, batch_first=True
+            d_model=embed_dim,
+            nhead=8,
+            dim_feedforward=512,
+            dropout=0.1,
+            batch_first=True
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=3)
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=3
+        )
         self.classifier = nn.Linear(embed_dim, num_classes)
 
     def forward(self, x):
-        # [batch, features] -> [batch, 1, embed_dim]
-        x_emb = self.input_proj(x).unsqueeze(1)
-        features = self.transformer(x_emb).squeeze(1)
+        # (batch, features)
+        x = self.embedding(x)
+        # (batch, 1, embed_dim)
+        x = x.unsqueeze(1)
+        # Self-attention
+        features = self.transformer(x)
+        # (batch, embed_dim)
+        features = features.squeeze(1)
         logits = self.classifier(features)
         return logits, features
 
 class TeacherLSTM(nn.Module):
-    """Recurrent Teacher: Sequential Expert for Temporal Attack Patterns."""
+    """
+    Bi-LSTM Teacher
+    Captures sequential dependencies among network traffic features.
+    Returns:
+        logits   : Classification output
+        features : 256-dimensional representation for feature distillation
+    """
+
     def __init__(self, input_dim, num_classes, hidden_dim=128):
         super().__init__()
-        # Bi-LSTM to capture patterns in both directions of the feature vector
+
         self.lstm = nn.LSTM(
-            input_dim, hidden_dim, num_layers=2, batch_first=True, bidirectional=True
+            input_size=input_dim,
+            hidden_size=hidden_dim,
+            num_layers=2,
+            batch_first=True,
+            bidirectional=True,
+            dropout=0.2
         )
-        # Bidirectional hidden_dim (128*2) = 256, matching ResNet/Transformer feature space
-        self.classifier = nn.Linear(hidden_dim * 2, num_classes)
+
+        self.classifier = nn.Linear(
+            hidden_dim * 2,
+            num_classes
+        )
 
     def forward(self, x):
-        # [batch, features] -> [batch, 1, features]
-        x_seq = x.unsqueeze(1)
-        _, (h_n, _) = self.lstm(x_seq)
-        # Concatenate final hidden states from forward and backward passes
-        features = torch.cat((h_n[-2,:,:], h_n[-1,:,:]), dim=1)
+
+        # (batch, features)
+        # -> (batch, sequence=1, features)
+        x = x.unsqueeze(1)
+
+        _, (hidden, _) = self.lstm(x)
+
+        # Concatenate forward and backward hidden states
+        features = torch.cat(
+            (hidden[-2], hidden[-1]),
+            dim=1
+        )
+
         logits = self.classifier(features)
+
         return logits, features
 
 # --- 3. BASELINE MODELS ---
