@@ -144,10 +144,6 @@ def main():
         history["best_val_loss"].append(best_val_loss)
         scheduler.step()
 
-        print(
-            f"Best Validation Loss : {best_val_loss:.4f}"
-        )
-
         # ✅ Robust JSON Save (Prevents empty files)
         with open(log_path, 'w') as f:
             json.dump(history, f, indent=4)
@@ -177,6 +173,8 @@ def main():
             if epochs_no_improve >= args.patience:
                 print(f"🛑 Early stopping triggered.")
                 break
+
+        print(f"Best Validation Loss : {best_val_loss:.4f}")
 
 if __name__ == "__main__":
     main()
