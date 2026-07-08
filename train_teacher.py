@@ -71,8 +71,10 @@ def main():
     # --- SETUP ---
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Ensure the models directory exists
-    os.makedirs(os.path.dirname(os.path.abspath(args.save_path)), exist_ok=True)
-
+    #os.makedirs(os.path.dirname(os.path.abspath(args.save_path)), exist_ok=True)
+    os.makedirs("models", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
+    
     # 1. Load Data
     #print(f"📂 Loading data from: {args.data_path}")
     
@@ -218,9 +220,15 @@ def main():
             'scaler': scaler,
             'input_dim': input_dim,
             'num_classes': num_classes
-        }, args.save_path)
+        }, save_path)
 
-        print(f"💾 Saved improved model to {args.save_path}")
+        print(f"💾 Saved improved model to {save_path}")
+
+        history["train_loss"].append(avg_loss)
+        history["val_loss"].append(val_loss)
+
+        with open(log_path, "w") as f:
+            json.dump(history, f, indent=4)
 
     print(f"✅ Teacher training complete. Best Loss: {best_loss:.4f}")
 
