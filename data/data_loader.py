@@ -1,5 +1,5 @@
 from .cic_iot_loader import load_cic_dataset
-from .nbaiot_loader import load_nbaiot_dataset
+from .nba_iot_loader import load_nbaiot_dataset
 from .common import get_dataloaders
 
 
