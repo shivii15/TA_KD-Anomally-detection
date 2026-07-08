@@ -8,6 +8,8 @@ from datetime import datetime
 from tqdm import tqdm  # ✅ New Import
 from data.data_loader import load_dataset, get_dataloaders
 from models.model import TeacherResNet
+from datetime import datetime
+
 
 def validate(model, loader, criterion, device):
     model.eval()
@@ -44,7 +46,7 @@ def main():
     parser.add_argument('--batch_size', type=int, default=4096)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--patience', type=int, default=10)
-    parser.add_argument('--save_name', type=str, default="Teacher_v2.1-SOTA-ResNet")
+    #parser.add_argument('--save_name', type=str, default="Teacher_v2.1-SOTA-ResNet")
     args = parser.parse_args()
 
     if args.dataset == "cic" and args.data_path is None:
@@ -58,7 +60,13 @@ def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     os.makedirs('models', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
-    full_save_path = f"models/{args.save_name}_{timestamp}.pth"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
+    save_path = (
+        f"models/{args.teacher}_{args.dataset}_{timestamp}.pth"
+    )
+    #full_save_path = f"models/{args.save_name}_{timestamp}.pth"
     log_path = f"logs/{args.save_name}_{timestamp}_history.json"
 
     # 2. Data & Model
@@ -172,8 +180,8 @@ def main():
                 "scaler": scaler,
                 "input_dim": input_dim,
                 "num_classes": num_classes
-            }, full_save_path)
-            print(f"⭐ Best Model Saved to {full_save_path}")
+            }, save_path)
+            print(f"⭐ Best Model Saved to {save_path}")
         else:
             epochs_no_improve += 1
             if epochs_no_improve >= args.patience:
