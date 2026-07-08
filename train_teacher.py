@@ -220,16 +220,17 @@ def main():
         #if avg_loss < best_loss:
         if val_loss < best_loss:
             best_loss = val_loss
-        torch.save({
-            'dataset': args.dataset,
-            'model_state_dict': model.state_dict(),
-            'le': le,
-            'scaler': scaler,
-            'input_dim': input_dim,
-            'num_classes': num_classes
-        }, save_path)
+            torch.save({
+                'dataset': args.dataset,
+                'model_state_dict': model.state_dict(),
+                'le': le,
+                'scaler': scaler,
+                'input_dim': input_dim,
+                'num_classes': num_classes
+            }, save_path)
 
-        print(f"💾 Saved improved model to {save_path}")
+            print(f"💾 Saved improved model to {save_path}")
+
 
         history["train_loss"].append(avg_loss)
         history["val_loss"].append(val_loss)
