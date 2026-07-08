@@ -151,7 +151,10 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     criterion = nn.CrossEntropyLoss()
 
-
+    history = {
+        "train_loss": [],
+        "val_loss": []
+    }
 
     # 3. Training Loop
     #print(f"🚀 Training Teacher for {args.epochs} epochs on {device}...")
