@@ -18,39 +18,56 @@ class TGKDTrustModule(nn.Module):
 
     def __init__(
         self,
-        trust_method="weighted",
         confidence_weight=0.4,
-        anomaly_weight=0.4,
+        anomaly_weight=0.3,
         entropy_weight=0.2,
+        disagreement_weight=0.1,
         base_temperature=2.0,
-        gamma=2.0,
+        lambda_temp=1.0,
+        trust_method="weighted"
     ):
         super().__init__()
 
-        self.trust_method = trust_method
-
+        # -------------------------------
+        # Trust Weights
+        # -------------------------------
         self.confidence_weight = confidence_weight
         self.anomaly_weight = anomaly_weight
         self.entropy_weight = entropy_weight
+        self.disagreement_weight = disagreement_weight
 
+        # -------------------------------
+        # Temperature Parameters
+        # -------------------------------
         self.base_temperature = base_temperature
-        self.gamma = gamma
+        self.lambda_temp = lambda_temp
 
+        # -------------------------------
+        # Trust Strategy
+        # -------------------------------
+        self.trust_method = trust_method
+
+        # -------------------------------
+        # Placeholder for trained
+        # Isolation Forest
+        # -------------------------------
         self.anomaly_detector = None
 
-    def load_anomaly_detector(self, detector_path):
-        """
-        Load a pretrained anomaly detector.
-        """
+    def load_anomaly_detector(self, model_path):
 
-        detector = joblib.load(detector_path)
+        package = joblib.load(model_path)
 
-        if isinstance(detector, dict):
-            detector = detector["model"]
+        self.anomaly_detector = package["model"]
 
-        self.anomaly_detector = detector
+        self.scaler = package["scaler"]
 
-        print("✅ Anomaly detector loaded successfully.")
+        self.dataset = package["dataset"]
+
+        self.feature_dim = package["feature_dim"]
+
+        self.classes = package["classes"]
+
+        print("✅ Isolation Forest loaded successfully.")
     
     def compute_confidence(self, teacher_logits):
 
