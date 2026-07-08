@@ -49,7 +49,14 @@ def main():
         choices=["cic", "nbaiot"],
         help="Dataset to use"
     )
-    parser.add_argument('--data_path', type=str, required=True)
+    #parser.add_argument('--data_path', type=str, required=True)
+    
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=None,
+        help="Dataset directory (optional for N-BaIoT)"
+    )
     # Teacher Paths
     parser.add_argument('--resnet_path', type=str, required=True, help="Path to trained ResNet teacher")
     parser.add_argument('--trans_path', type=str, required=True, help="Path to trained Transformer teacher")

@@ -1,28 +1,28 @@
-from .cic_iot_loader import (
-    load_cic_dataset,
-    get_dataloaders,
-)
-
-from .nba_iot_loader import load_nbaiot_dataset
+from .cic_iot_loader import load_cic_dataset
+from .nbaiot_loader import load_nbaiot_dataset
+from .common import get_dataloaders
 
 
 def load_dataset(args):
 
-    if args.dataset.lower() == "cic":
+    dataset = args.dataset.lower()
+
+    if dataset == "cic":
 
         return load_cic_dataset(
-            args.data_path,
+            data_dir=args.data_path,
             num_parts=args.num_parts
         )
 
-    elif args.dataset.lower() == "nbaiot":
+    elif dataset == "nbaiot":
 
         return load_nbaiot_dataset(
-            args.data_path
+            data_dir=args.data_path,
+            num_parts=args.num_parts
         )
 
     else:
 
         raise ValueError(
-            f"Unsupported dataset: {args.dataset}"
+            f"Unsupported dataset : {dataset}"
         )
