@@ -9,6 +9,16 @@ from data.data_loader import load_dataset
 
 def train_anomaly_module(args):
     timestamp = datetime.now().strftime("%Y%m%d")
+        # --------------------------------------------------
+    # Output directory
+    # --------------------------------------------------
+
+    os.makedirs("models", exist_ok=True)
+
+    save_path = os.path.join(
+        "models",
+        f"{args.save_name}_{args.dataset}_{timestamp}.pkl"
+    )
     print(f"🚀 Starting Anomaly Module Training | {timestamp}")
     
     # 1. Load data using your specialized loader
@@ -69,8 +79,6 @@ def train_anomaly_module(args):
     
     iso_forest.fit(X_benign)
     
-    # 5. Save Model + Essential Metadata for Distillation
-    os.makedirs(os.path.dirname(args.save_path), exist_ok=True)
     
     # We include the scaler so the Trust-Gate can normalize raw inputs in real-time
     #model_package = {
@@ -122,7 +130,7 @@ def train_anomaly_module(args):
 
     }
     
-    joblib.dump(model_package, args.save_path)
+    joblib.dump(model_package, save_path)
         
     print("\n" + "-" * 50)
 
@@ -137,7 +145,7 @@ def train_anomaly_module(args):
     print(f"Trees          : {args.n_estimators}")
     print(f"Contamination  : {args.contamination}")
 
-    print(f"\nSaved Model    : {args.save_path}")
+    print(f"\nSaved Model    : {save_path}")
 
     print("-" * 50)
 
@@ -157,7 +165,12 @@ if __name__ == "__main__":
         default=None,
         help="Dataset directory (optional for N-BaIoT)"
     )
-    parser.add_argument('--save_path', type=str, default="models/iso_forest_iot_resnet_24march.pkl")
+    parser.add_argument(
+        "--save_name",
+        type=str,
+        default="IsolationForest",
+        help="Base name for the saved anomaly detector"
+    )
     parser.add_argument('--num_parts', type=int, default=10)
     parser.add_argument('--n_estimators', type=int, default=100)
     parser.add_argument('--contamination', type=float, default=0.01)
