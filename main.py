@@ -12,8 +12,14 @@ from datetime import datetime
 from tqdm import tqdm
 
 from data.data_loader import load_dataset, get_dataloaders
-from models.model import TeacherResNet, TeacherTransformer, TeacherLSTM, StudentMLP
+from models.model import (
+    TeacherResNet,
+    TeacherTransformer,
+    TeacherLSTM,
+    StudentMLP
+)
 
+from models.trust_gate import TGKDTrustModule
 # ---------------------------
 # ✅ SOTA UTILITIES
 # ---------------------------
@@ -21,9 +27,6 @@ def update_ema_variables(model, ema_model, alpha=0.999):
     for ema_param, param in zip(ema_model.parameters(), model.parameters()):
         ema_param.data.mul_(alpha).add_(param.data, alpha=1 - alpha)
 
-def normalize_anomaly_score(raw_scores):
-    """Sigmoid normalization for Isolation Forest [-0.5, 0.5] -> [0, 1]"""
-    return torch.sigmoid(raw_scores * 10.0)
 
 def validate(model, loader, device):
     model.eval()
@@ -95,20 +98,74 @@ def main():
     input_dim = X.shape[1]
 
     # 3. Initialize Committee of Experts
-    def load_teacher(model_class, path):
-        m = model_class(input_dim, num_classes)
-        ckpt = torch.load(path, map_location=device, weights_only=False)
-        m.load_state_dict(ckpt['model_state_dict'] if 'model_state_dict' in ckpt else ckpt)
-        return m.to(device).eval()
+    def load_teacher(model_class, checkpoint_path):
 
-    t_resnet = load_teacher(TeacherResNet, args.resnet_path)
-    t_trans = load_teacher(TeacherTransformer, args.trans_path)
-    t_lstm = load_teacher(TeacherLSTM, args.lstm_path)
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=device,
+            weights_only=False
+        )
+
+        model = model_class(
+            checkpoint["input_dim"],
+            checkpoint["num_classes"]
+        )
+
+        model.load_state_dict(
+            checkpoint["model_state_dict"]
+        )
+
+        model = model.to(device)
+        model.eval()
+
+        return model, checkpoint
+
+    t_resnet, resnet_ckpt = load_teacher(
+        TeacherResNet,
+        args.resnet_path
+    )
+
+    t_trans, transformer_ckpt = load_teacher(
+        TeacherTransformer,
+        args.trans_path
+    )
+
+    t_lstm, lstm_ckpt = load_teacher(
+        TeacherLSTM,
+        args.lstm_path
+    )
+
+    trust_module = TGKDTrustModule(
+        confidence_weight=0.4,
+        anomaly_weight=0.3,
+        entropy_weight=0.2,
+        disagreement_weight=0.1,
+        base_temperature=args.temp_base,
+        gamma=2.0
+    )
+
+    trust_module.load_anomaly_detector(
+        args.iso_path
+    )
+
+    teacher_checkpoints = [
+        resnet_ckpt,
+        transformer_ckpt,
+        lstm_ckpt
+    ]
+
+    for checkpoint in teacher_checkpoints:
+
+        if checkpoint["dataset"] != args.dataset:
+
+            raise ValueError(
+                f"Teacher trained on {checkpoint['dataset']} "
+                f"cannot be used with {args.dataset}."
+            )
+
     print("🎓 Committee of Experts Loaded: ResNet, Transformer, LSTM")
 
     # Load Anomaly Detector
-    iso_package = joblib.load(args.iso_path)
-    iso_model = iso_package['model'] if isinstance(iso_package, dict) else iso_package
     print(f"🌲 Anomaly Module Active")
 
     # Initialize Student
@@ -125,7 +182,7 @@ def main():
         total_loss = 0
         train_pbar = tqdm(train_loader, desc=f"🚀 Multi-Distill E{epoch}", leave=False)
 
-        for batch_x, batch_y in train_pbar:
+        for i, batch_x, batch_y in train_pbar:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
 
             with torch.no_grad():
@@ -133,20 +190,55 @@ def main():
                 logits_r, feat_r = t_resnet(batch_x)
                 logits_t, _ = t_trans(batch_x)
                 logits_l, _ = t_lstm(batch_x)
-                
+                # Committee aggregation
+                committee_logits = (
+                    logits_r +
+                    logits_t +
+                    logits_l
+                ) / 3.0
                 # Multi-Teacher Aggregation (Average Logits)
-                avg_t_logits = (logits_r + logits_t + logits_l) / 3.0
+                trust_outputs = trust_module(
+                teacher_logits=committee_logits,
+                student_logits=s_logits.detach(),
+                x_input=batch_x
+            )
                 
-                # Trust-Gating Logic
-                raw_a = torch.tensor(iso_model.decision_function(batch_x.cpu().numpy()), device=device, dtype=torch.float32)
-                norm_a = normalize_anomaly_score(raw_a)
-                
-                t_probs = torch.softmax(avg_t_logits, dim=1)
-                trust_score = (0.4 * torch.max(t_probs, 1)[0]) + (0.6 * norm_a)
-                tau_adapt = (args.temp_base * (2.0 - trust_score)).unsqueeze(1)
-
+            # -------------------------
             # Student Forward
+            # -------------------------
+
             s_logits, s_feat = student(batch_x)
+            trust_outputs = trust_module(
+
+                teacher_logits=committee_logits,
+
+                student_logits=s_logits.detach(),
+
+                x_input=batch_x
+            )
+
+            # -------------------------
+            # Trust Module
+            # -------------------------
+
+            trust_score = trust_outputs["trust_score"]
+            temperature = trust_outputs["temperature"]
+            confidence = trust_outputs["confidence"]
+            entropy = trust_outputs["entropy_trust"]
+            anomaly = trust_outputs["anomaly_score"]
+            disagreement = trust_outputs["disagreement"]
+
+            # ← VERIFY HERE
+            if epoch == 1 and i == 0:
+
+                print("\n========== Trust Module ==========")
+                print(f"Confidence    : {confidence.mean().item():.4f}")
+                print(f"Entropy Trust : {entropy.mean().item():.4f}")
+                print(f"Anomaly Score : {anomaly.mean().item():.4f}")
+                print(f"Disagreement  : {disagreement.mean().item():.4f}")
+                print(f"Trust Score   : {trust_score.mean().item():.4f}")
+                print(f"Temperature   : {temperature.mean().item():.4f}")
+                print("==================================\n")
 
             # ---------------------------
             # ✅ MULTI-TEACHER LOSS
@@ -155,10 +247,28 @@ def main():
             loss_ce = ( (1 - trust_score) * F.cross_entropy(s_logits, batch_y, reduction='none') ).mean()
             
             # 2. Adaptive Soft Distillation (Soft Loss)
-            soft_t = torch.softmax(avg_t_logits / tau_adapt, dim=1)
-            soft_s = torch.log_softmax(s_logits / tau_adapt, dim=1)
-            loss_kd = (trust_score * F.kl_div(soft_s, soft_t, reduction='none').sum(1) * (tau_adapt.squeeze()**2)).mean()
-            
+            temperature = temperature.unsqueeze(1)
+
+            soft_teacher = torch.softmax(
+                committee_logits / temperature,
+                dim=1
+            )
+
+            soft_student = torch.log_softmax(
+                s_logits / temperature,
+                dim=1
+            )
+
+            loss_kd = (
+                trust_score *
+                F.kl_div(
+                    soft_student,
+                    soft_teacher,
+                    reduction="none"
+                ).sum(1)
+                *
+                (temperature.squeeze() ** 2)
+            ).mean()
             # 3. Feature Alignment (Against SOTA ResNet Expert)
             loss_feat = args.feat_weight * F.mse_loss(s_feat, feat_r)
             
