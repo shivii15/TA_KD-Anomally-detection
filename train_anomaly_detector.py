@@ -25,19 +25,29 @@ def train_anomaly_module(args):
     print("-" * 40)
     
     # 2. Robust Label Detection (Handles 'Benign' variants)
+    # --------------------------------------------------
+    # Automatically detect the benign class
+    # --------------------------------------------------
+
     benign_idx = None
-    possible_names = ["BenignTraffic", "Benign", "benign", "BENIGN"]
-    
-    for name in possible_names:
-        if name in le.classes_:
-            benign_idx = list(le.classes_).index(name)
-            print(f"✅ Target Label Found: '{name}' (Index: {benign_idx})")
+
+    for idx, label in enumerate(le.classes_):
+
+        if "benign" in label.lower():
+
+            benign_idx = idx
+
+            print(f"✅ Benign Class Detected : {label}")
+
             break
 
     if benign_idx is None:
-        benign_idx = 0
-        print(f"⚠️ Warning: Benign label not found. Defaulting to index 0: {le.classes_[0]}")
 
+        raise ValueError(
+            f"Could not find a benign class.\nAvailable classes : {list(le.classes_)}"
+        )
+    
+    
     # 3. Filter for Benign samples (Semi-Supervised Approach)
     X_benign = X[y == benign_idx]
     
