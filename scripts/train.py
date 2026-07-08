@@ -71,6 +71,12 @@ class TGKD_Trainer:
                 x_input=x
                 )
 
+                print("\nTrust Module Output")
+
+                for k, v in trust_outputs.items():
+
+                    print(k, v.shape)
+
                 trust_score = trust_outputs["trust_score"]
 
                 temperature = trust_outputs["temperature"]
