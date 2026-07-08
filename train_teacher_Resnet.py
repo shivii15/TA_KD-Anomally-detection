@@ -98,6 +98,14 @@ def main():
     history = {"train_loss": [], "val_loss": [], "val_acc": [], "lr": []}
     best_val_loss = float('inf')
     epochs_no_improve = 0
+
+    history = {
+        "train_loss": [],
+        "val_loss": [],
+        "best_val_loss": [],
+        "val_acc": [],
+        "lr": []
+    }
     
     print(f"🟢 Training: {args.save_name}")
     print("\nClasses")
@@ -128,6 +136,7 @@ def main():
         avg_val_loss, val_acc = validate(model, val_loader, criterion, device)
         
         # Log and step scheduler
+
         history["train_loss"].append(avg_train_loss)
         history["val_loss"].append(avg_val_loss)
         history["val_acc"].append(val_acc)
