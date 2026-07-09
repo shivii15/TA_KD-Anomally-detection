@@ -60,6 +60,7 @@ def main():
         )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    
 
     save_path = (
         f"models/Teacher_{args.teacher}_{args.dataset}_{timestamp}.pth"
@@ -153,11 +154,13 @@ def main():
     criterion = nn.CrossEntropyLoss()
 
     history = {
+        "epoch": [],
         "train_loss": [],
         "val_loss": [],
         "val_acc": [],
         "best_val_loss": [],
-        "lr": []
+        "lr": [],
+        "timestamp": []
     }
 
     # 3. Training Loop
@@ -221,21 +224,34 @@ def main():
         if val_loss < best_loss:
             best_loss = val_loss
             torch.save({
-                'dataset': args.dataset,
-                'model_state_dict': model.state_dict(),
-                'le': le,
-                'scaler': scaler,
-                'input_dim': input_dim,
-                'num_classes': num_classes
+                "dataset": args.dataset,
+                "teacher": args.teacher,
+                "epoch": epoch,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "best_val_loss": best_loss,
+                "input_dim": input_dim,
+                "num_classes": num_classes,
+                "le": le,
+                "scaler": scaler,
+                "timestamp": timestamp
             }, save_path)
 
             print(f"💾 Saved improved model to {save_path}")
+        else:
+            print(
+                f"No improvement "
+                f"(Best Validation Loss: {best_loss:.4f})"
+            )
 
 
+        history["epoch"].append(epoch)
         history["train_loss"].append(avg_loss)
         history["val_loss"].append(val_loss)
+        history["val_acc"].append(val_acc)
         history["best_val_loss"].append(best_loss)
         history["lr"].append(optimizer.param_groups[0]["lr"])
+        history["timestamp"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
         with open(log_path, "w") as f:
             json.dump(history, f, indent=4)
