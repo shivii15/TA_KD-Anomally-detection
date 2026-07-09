@@ -198,6 +198,8 @@ def main():
         model.eval()
 
         val_loss = 0
+        correct = 0
+        total = 0
 
         with torch.no_grad():
 
@@ -205,20 +207,22 @@ def main():
 
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
-
                 logits, _ = model(batch_x)
-
                 loss = criterion(logits, batch_y)
-
                 val_loss += loss.item()
+                preds = torch.argmax(logits, dim=1)
+                correct += (preds == batch_y).sum().item()
+                total += batch_y.size(0)
 
         val_loss /= len(val_loader)
+        val_acc = 100.0 * correct / total
 
         #print(f"Epoch {epoch:02d}/{args.epochs} | Avg Loss: {avg_loss:.4f}")
         print(
             f"Epoch {epoch:02d}/{args.epochs} | "
             f"Train Loss: {avg_loss:.4f} | "
-            f"Validation Loss: {val_loss:.4f}"
+            f"Validation Loss: {val_loss:.4f} | "
+            f"Validation Acc: {val_acc:.2f}%"
         )
         # --- SMART SAVING ---
         #if avg_loss < best_loss:
