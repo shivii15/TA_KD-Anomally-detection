@@ -2,6 +2,17 @@ from .cic_iot_loader import load_cic_dataset
 from .nba_iot_loader import load_nbaiot_dataset
 from .common import get_dataloaders
 import os
+import kagglehub
+
+def download_nbaiot():
+    print("⬇️ Downloading N-BaIoT dataset...")
+    path = kagglehub.dataset_download("mkashifn/nbaiot-dataset")
+    return path
+
+def download_cic():
+    print("⬇️ Downloading CIC-IoT2023 dataset...")
+    path = kagglehub.dataset_download("jaganadhg/cic-iot2023")
+    return path
 
 def resolve_dataset_path(dataset, data_path=None):
     """
