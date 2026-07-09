@@ -5,12 +5,14 @@ import os
 import kagglehub
 
 def download_nbaiot():
-    print("⬇️ Downloading N-BaIoT dataset...")
-    path = kagglehub.dataset_download("mkashifn/nbaiot-dataset")
+    print("📦 Resolving N-BaIoT dataset (download or cache)...")
+    path = kagglehub.dataset_download(
+        "mkashifn/nbaiot-dataset"
+    )
     return path
 
 def download_cic():
-    print("⬇️ Downloading CIC-IoT2023 dataset...")
+    print("⬇️ Resolving CIC-IoT2023 dataset...")
     path = kagglehub.dataset_download("jaganadhg/cic-iot2023")
     return path
 
@@ -36,7 +38,7 @@ def resolve_dataset_path(dataset, data_path=None):
                 f"Dataset directory not found:\n{data_path}"
             )
 
-        print(f"📂 Using dataset from: {data_path}")
+        print(f"📂 Using user-specified dataset: {data_path}")
 
         return data_path
 

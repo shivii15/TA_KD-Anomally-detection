@@ -14,6 +14,7 @@ from models.model import (
 )
 import os
 import pandas as pd
+from config.default_config import DEFAULT_CONFIG
 
 def main():
     parser = argparse.ArgumentParser(description="Train the Expert Teacher Model")
@@ -43,11 +44,11 @@ def main():
         help="Dataset directory"
     )
     #parser.add_argument('--data_path', type=str, required=True)
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--epochs', type=int, default=DEFAULT_CONFIG["epochs"])
+    parser.add_argument('--batch_size', type=int, default=DEFAULT_CONFIG["batch_size"])
+    parser.add_argument('--lr', type=float, default=DEFAULT_CONFIG["lr"])
     #parser.add_argument('--save_path', type=str, default="models/teacher_best.pth")
-    parser.add_argument('--num_parts', type=int, default=5, 
+    parser.add_argument('--num_parts', type=int, default=DEFAULT_CONFIG["num_parts"], 
                     help='Number of CSV parts to load (use -1 for ALL parts)')
     parser.add_argument('--save_scaler', type=str, default='models/scaler.pkl', 
                     help='Where to save the StandardScaler for the Student to use later')

@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 
 from data.data_loader import load_dataset, get_dataloaders
+from config.default_config import DEFAULT_CONFIG
 
 from models.model import (
     TeacherDNN,
@@ -53,13 +54,13 @@ def parse_args():
 
     parser.add_argument(
         "--batch_size",
-        default=2048,
+        default=DEFAULT_CONFIG["batch_size"],
         type=int
     )
 
     parser.add_argument(
         "--num_parts",
-        default=-1,
+        default=DEFAULT_CONFIG["num_parts"],
         type=int
     )
 

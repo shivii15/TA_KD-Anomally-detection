@@ -10,6 +10,7 @@ import copy
 import json
 from datetime import datetime
 from tqdm import tqdm
+from config.default_config import DEFAULT_CONFIG
 
 from data.data_loader import load_dataset, get_dataloaders
 from models.model import (
@@ -66,12 +67,17 @@ def main():
     parser.add_argument('--lstm_path', type=str, required=True, help="Path to trained LSTM teacher")
     
     parser.add_argument('--iso_path', type=str, default="models/iso_forest_iot.pkl")
-    parser.add_argument('--num_parts', type=int, default=-1)
-    parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--temp_base', type=float, default=3.0)
-    parser.add_argument('--feat_weight', type=float, default=0.5)
+    parser.add_argument('--num_parts', type=int, default=DEFAULT_CONFIG["num_parts"])
+    #parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=DEFAULT_CONFIG["epochs"]
+    )
+    parser.add_argument('--batch_size', type=int, default=DEFAULT_CONFIG["batch_size"])
+    parser.add_argument('--lr', type=float, default=DEFAULT_CONFIG["lr"])
+    parser.add_argument('--temp_base', type=float, default=DEFAULT_CONFIG["temp_base"])
+    parser.add_argument('--feat_weight', type=float, default=DEFAULT_CONFIG["feat_weight"])
     parser.add_argument('--save_name', type=str, default="Student_MultiTeacher_TGKD")
     args = parser.parse_args()
 

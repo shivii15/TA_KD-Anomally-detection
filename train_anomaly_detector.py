@@ -8,6 +8,7 @@ import argparse
 from datetime import datetime
 from sklearn.ensemble import IsolationForest
 from data.data_loader import load_dataset
+from config.default_config import DEFAULT_CONFIG
 
 def train_anomaly_module(args):
     timestamp = datetime.now().strftime("%Y%m%d")
@@ -206,8 +207,8 @@ if __name__ == "__main__":
         help="Base name for the saved anomaly detector"
     )
     parser.add_argument('--num_parts', type=int, default=10)
-    parser.add_argument('--n_estimators', type=int, default=100)
-    parser.add_argument('--contamination', type=float, default=0.01)
+    parser.add_argument('--n_estimators', type=int, default=DEFAULT_CONFIG["n_estimators"])
+    parser.add_argument('--contamination', type=float, default=DEFAULT_CONFIG["contamination"])
 
     args = parser.parse_args()
 
