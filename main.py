@@ -195,13 +195,7 @@ def main():
                     logits_t +
                     logits_l
                 ) / 3.0
-                # Multi-Teacher Aggregation (Average Logits)
-                trust_outputs = trust_module(
-                teacher_logits=committee_logits,
-                student_logits=s_logits.detach(),
-                x_input=batch_x
-            )
-                
+
             # -------------------------
             # Student Forward
             # -------------------------
@@ -214,7 +208,8 @@ def main():
                 student_logits=s_logits.detach(),
 
                 x_input=batch_x
-            )
+            )    
+
 
             # -------------------------
             # Trust Module
