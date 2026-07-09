@@ -181,7 +181,7 @@ def main():
         total_loss = 0
         train_pbar = tqdm(train_loader, desc=f"🚀 Multi-Distill E{epoch}", leave=False)
 
-        for i, batch_x, batch_y in train_pbar:
+        for i, (batch_x, batch_y) in enumerate(train_pbar):
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
 
             with torch.no_grad():
