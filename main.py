@@ -240,19 +240,14 @@ def main():
 
             s_logits, s_feat = student(batch_x)
             trust_outputs = trust_module(
-
                 teacher_logits=committee_logits,
-
                 student_logits=s_logits.detach(),
-
                 x_input=batch_x
-            )    
-
+            )
 
             # -------------------------
             # Trust Module
             # -------------------------
-
             trust_score = trust_outputs["trust_score"]
             temperature = trust_outputs["temperature"]
             confidence = trust_outputs["confidence"]
@@ -260,17 +255,7 @@ def main():
             anomaly = trust_outputs["anomaly_score"]
             disagreement = trust_outputs["disagreement"]
 
-            epoch_ce_loss += loss_ce.item()
-            epoch_kd_loss += loss_kd.item()
-            epoch_feature_loss += loss_feat.item()
-            epoch_confidence += confidence.mean().item()
-            epoch_entropy += entropy.mean().item()
-            epoch_anomaly += anomaly.mean().item()
-            epoch_disagreement += disagreement.mean().item()
-            epoch_trust += trust_score.mean().item()
-            epoch_temperature += temperature.mean().item()
-
-            # ← VERIFY HERE
+            # Print only the first batch
             if epoch == 1 and i == 0:
 
                 print("\n========== Trust Module ==========")
@@ -282,44 +267,79 @@ def main():
                 print(f"Temperature   : {temperature.mean().item():.4f}")
                 print("==================================\n")
 
-            # ---------------------------
-            # ✅ MULTI-TEACHER LOSS
-            # ---------------------------
-            # 1. Trust-Gated Cross Entropy (Hard Loss)
-            loss_ce = ( (1 - trust_score) * F.cross_entropy(s_logits, batch_y, reduction='none') ).mean()
-            
-            # 2. Adaptive Soft Distillation (Soft Loss)
-            temperature = temperature.unsqueeze(1)
+            # --------------------------------------------------
+            # Loss Calculation
+            # --------------------------------------------------
+
+            # Cross Entropy
+            loss_ce = (
+                (1 - trust_score)
+                * F.cross_entropy(
+                    s_logits,
+                    batch_y,
+                    reduction="none"
+                )
+            ).mean()
+
+            # Knowledge Distillation
+            temperature_kd = temperature.unsqueeze(1)
 
             soft_teacher = torch.softmax(
-                committee_logits / temperature,
+                committee_logits / temperature_kd,
                 dim=1
             )
 
             soft_student = torch.log_softmax(
-                s_logits / temperature,
+                s_logits / temperature_kd,
                 dim=1
             )
 
             loss_kd = (
-                trust_score *
-                F.kl_div(
+                trust_score
+                * F.kl_div(
                     soft_student,
                     soft_teacher,
                     reduction="none"
                 ).sum(1)
-                *
-                (temperature.squeeze() ** 2)
+                * (temperature_kd.squeeze() ** 2)
             ).mean()
-            # 3. Feature Alignment (Against SOTA ResNet Expert)
-            loss_feat = args.feat_weight * F.mse_loss(s_feat, feat_r)
-            
-            batch_loss = loss_ce + loss_kd + loss_feat
-            
+
+            # Feature Alignment
+            loss_feat = (
+                args.feat_weight
+                * F.mse_loss(s_feat, feat_r)
+            )
+
+            # Total Loss
+            batch_loss = (
+                loss_ce
+                + loss_kd
+                + loss_feat
+            )
+
+            # --------------------------------------------------
+            # Update Epoch Statistics
+            # --------------------------------------------------
+
+            epoch_ce_loss += loss_ce.item()
+            epoch_kd_loss += loss_kd.item()
+            epoch_feature_loss += loss_feat.item()
+
+            epoch_confidence += confidence.mean().item()
+            epoch_entropy += entropy.mean().item()
+            epoch_anomaly += anomaly.mean().item()
+            epoch_disagreement += disagreement.mean().item()
+            epoch_trust += trust_score.mean().item()
+            epoch_temperature += temperature.mean().item()
+
+            # --------------------------------------------------
+            # Optimization
+            # --------------------------------------------------
+
             optimizer.zero_grad()
             batch_loss.backward()
             optimizer.step()
-            
+
             update_ema_variables(student, ema_student)
             total_loss += batch_loss.item()
             train_pbar.set_postfix({"loss": f"{batch_loss.item():.4f}"})
