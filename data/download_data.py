@@ -1,29 +1,111 @@
 import os
+import argparse
 import kagglehub
 
-def download_full_dataset():
-    # 1. Define the project root and the path-storage file
-    # This helps your .sh scripts find the data later
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    PATH_FILE = os.path.join(BASE_DIR, ".data_path")
 
-    print("📡 Initializing full CIC-IoT-2023 download via Kagglehub...")
-    
-    try:
-        # 2. Download the full dataset (all 169 parts)
-        # This will stay in the hidden ~/.cache folder to save project space
-        dataset_path = kagglehub.dataset_download("akashdogra/cic-iot-2023")
-        
-        # 3. Save the path to a hidden file for your Shell Scripts
-        with open(PATH_FILE, "w") as f:
-            f.write(dataset_path)
-            
-        print("\n✅ Download Complete!")
-        print(f"📂 Full dataset located at: {dataset_path}")
-        print(f"📍 Path saved for scripts in: {PATH_FILE}")
-        
-    except Exception as e:
-        print(f"❌ Error during download: {e}")
+# -------------------------------------------------------
+# Dataset Registry
+# -------------------------------------------------------
+
+DATASETS = {
+    "nbaiot": "mkashifn/nbaiot-dataset",
+    "cic": "akashdogra/cic-iot-2023"
+}
+
+
+# -------------------------------------------------------
+# Download Function
+# -------------------------------------------------------
+
+def download_dataset(dataset_name):
+
+    if dataset_name not in DATASETS:
+        raise ValueError(
+            f"Unsupported dataset: {dataset_name}"
+        )
+
+    print(f"\n📡 Downloading {dataset_name.upper()} dataset...")
+
+    dataset_path = kagglehub.dataset_download(
+        DATASETS[dataset_name]
+    )
+
+    print(f"✅ Download complete.")
+
+    print(f"📂 Location : {dataset_path}")
+
+    return dataset_path
+
+
+# -------------------------------------------------------
+# Main
+# -------------------------------------------------------
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        description="Download datasets using KaggleHub."
+    )
+
+    parser.add_argument(
+        "--dataset",
+        choices=["nbaiot", "cic", "all"],
+        default="all",
+        help="Dataset to download."
+    )
+
+    args = parser.parse_args()
+
+    # ----------------------------------------
+    # Project root
+    # ----------------------------------------
+
+    BASE_DIR = os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )
+    )
+
+    PATH_FILE = os.path.join(
+        BASE_DIR,
+        ".data_path"
+    )
+
+    downloaded_paths = {}
+
+    # ----------------------------------------
+    # Download
+    # ----------------------------------------
+
+    if args.dataset == "all":
+
+        datasets = ["nbaiot", "cic"]
+
+    else:
+
+        datasets = [args.dataset]
+
+    for dataset in datasets:
+
+        path = download_dataset(dataset)
+
+        downloaded_paths[dataset] = path
+
+    # ----------------------------------------
+    # Save paths
+    # ----------------------------------------
+
+    with open(PATH_FILE, "w") as f:
+
+        for dataset, path in downloaded_paths.items():
+
+            f.write(f"{dataset}={path}\n")
+
+    print("\n===========================================")
+    print("All requested datasets downloaded.")
+    print(f"Dataset paths saved in: {PATH_FILE}")
+    print("===========================================")
+
 
 if __name__ == "__main__":
-    download_full_dataset()
+    main()
