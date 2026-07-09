@@ -90,7 +90,7 @@ def main():
     #train_loader, test_loader = get_dataloaders(X_train, y_train, batch_size=args.batch_size)
 # Call the updated loader with correct variable mapping
     X_processed, y_processed, le, scaler = load_dataset(args)    
-    train_loader, val_loader = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
+    train_loader, val_loader,_ = get_dataloaders(X_processed, y_processed, batch_size=args.batch_size)
     
     print(f"🏷️ Class Labels: {list(le.classes_)}")
 

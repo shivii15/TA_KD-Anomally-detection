@@ -75,21 +75,62 @@ def save_preprocessing_objects(
 # Create PyTorch DataLoaders
 # -------------------------------------------------------
 
+# -------------------------------------------------------
+# Create PyTorch DataLoaders
+# -------------------------------------------------------
+
 def get_dataloaders(
     X,
     y,
     batch_size=1024,
-    test_size=0.2,
+    train_size=0.80,
+    val_size=0.10,
+    test_size=0.10,
     random_state=42
 ):
+    """
+    Split dataset into
 
-    X_train, X_val, y_train, y_val = train_test_split(
+        Train : 80%
+        Validation : 10%
+        Test : 10%
+
+    Returns
+    -------
+    train_loader
+    val_loader
+    test_loader
+    """
+
+    # --------------------------------------------------
+    # First Split
+    # Train (80%) + Temp (20%)
+    # --------------------------------------------------
+
+    X_train, X_temp, y_train, y_temp = train_test_split(
         X,
         y,
-        test_size=test_size,
+        test_size=(1 - train_size),
         stratify=y,
         random_state=random_state
     )
+
+    # --------------------------------------------------
+    # Second Split
+    # Temp -> Validation (10%) + Test (10%)
+    # --------------------------------------------------
+
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp,
+        y_temp,
+        test_size=0.50,
+        stratify=y_temp,
+        random_state=random_state
+    )
+
+    # --------------------------------------------------
+    # PyTorch Datasets
+    # --------------------------------------------------
 
     train_ds = TensorDataset(
         torch.tensor(X_train, dtype=torch.float32),
@@ -100,6 +141,15 @@ def get_dataloaders(
         torch.tensor(X_val, dtype=torch.float32),
         torch.tensor(y_val, dtype=torch.long)
     )
+
+    test_ds = TensorDataset(
+        torch.tensor(X_test, dtype=torch.float32),
+        torch.tensor(y_test, dtype=torch.long)
+    )
+
+    # --------------------------------------------------
+    # DataLoaders
+    # --------------------------------------------------
 
     train_loader = DataLoader(
         train_ds,
@@ -113,4 +163,17 @@ def get_dataloaders(
         shuffle=False
     )
 
-    return train_loader, val_loader
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=batch_size,
+        shuffle=False
+    )
+
+    print("\nDataset Split")
+    print("-" * 40)
+    print(f"Train Samples      : {len(train_ds):,}")
+    print(f"Validation Samples : {len(val_ds):,}")
+    print(f"Test Samples       : {len(test_ds):,}")
+    print("-" * 40)
+
+    return train_loader, val_loader, test_loader

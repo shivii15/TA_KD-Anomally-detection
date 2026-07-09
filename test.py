@@ -78,7 +78,7 @@ def main():
     print(f"Checkpoint : {args.checkpoint}")
 
     X, y, le, scaler = load_dataset(args)
-    _, test_loader = get_dataloaders(
+    _,_, test_loader = get_dataloaders(
         X,
         y,
         batch_size=args.batch_size
@@ -94,12 +94,20 @@ def main():
     print(f"Classes : {num_classes}")
     print("-" * 40)
 
-    model_map = {
+    TEACHER_MODELS = {
         "dnn": TeacherDNN,
         "resnet": TeacherResNet,
         "transformer": TeacherTransformer,
         "lstm": TeacherLSTM,
-        "student": StudentMLP
+    }
+
+    STUDENT_MODELS = {
+        "student": StudentMLP,
+    }
+
+    model_map = {
+        **TEACHER_MODELS,
+        **STUDENT_MODELS,
     }
 
     model = model_map[args.model](
@@ -127,6 +135,7 @@ def main():
     print("\nCheckpoint Loaded Successfully")
     print("-" * 40)
     print(f"Model : {args.model}")
+    print(f"Input Features : {input_dim}")
     print(f"Dataset : {args.dataset}")
     print(f"Classes : {num_classes}")
     print("-" * 40)
