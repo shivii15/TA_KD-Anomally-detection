@@ -99,7 +99,7 @@ def main():
     # 2. Load Data
     #X, y, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
     X, y, le, scaler = load_dataset(args)
-    train_loader, val_loader = get_dataloaders(X, y, batch_size=args.batch_size)
+    train_loader, val_loader,_ = get_dataloaders(X, y, batch_size=args.batch_size)
     num_classes = len(le.classes_)
     input_dim = X.shape[1]
 
