@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import joblib
+import json
+import time
 import os
 import argparse
 from datetime import datetime
@@ -9,6 +11,7 @@ from data.data_loader import load_dataset
 
 def train_anomaly_module(args):
     timestamp = datetime.now().strftime("%Y%m%d")
+    start_time = time.time()
         # --------------------------------------------------
     # Output directory
     # --------------------------------------------------
@@ -67,6 +70,16 @@ def train_anomaly_module(args):
 
     print(f"🛠️ Training Isolation Forest on {len(X_benign)} clean samples...")
     
+    print("\nIsolation Forest Configuration")
+    print("-" * 40)
+    print(f"Dataset        : {args.dataset}")
+    print(f"Samples        : {len(X):,}")
+    print(f"Benign Samples : {len(X_benign):,}")
+    print(f"Features       : {X.shape[1]}")
+    print(f"Trees          : {args.n_estimators}")
+    print(f"Contamination  : {args.contamination}")
+    print("-" * 40)
+
     # 4. SOTA Configuration for IoT Anomaly Detection
     # Using 'auto' for max_samples ensures the model stays efficient on large datasets
     iso_forest = IsolationForest(
@@ -120,7 +133,8 @@ def train_anomaly_module(args):
         # Labels
         # --------------------------------------------------
         "classes": list(le.classes_),
-        "benign_label": le.classes_[benign_idx],
+        # removing it because it isn't used later in main.py.
+        #"benign_label": le.classes_[benign_idx],
 
         # --------------------------------------------------
         # Isolation Forest Parameters
@@ -129,8 +143,28 @@ def train_anomaly_module(args):
         "contamination": args.contamination
 
     }
+
+    # -----------------------------
+    # Training Log
+    # -----------------------------
+    training_time = time.time() - start_time
+    history = {
+        "dataset": args.dataset,
+        "samples": len(X),
+        "benign_samples": len(X_benign),
+        "features": X.shape[1],
+        "n_estimators": args.n_estimators,
+        "contamination": args.contamination,
+        "timestamp": timestamp,
+        "training_time": training_time
+    }
     
     joblib.dump(model_package, save_path)
+
+    log_path = args.save_path.replace(".pkl", "_history.json")
+
+    with open(log_path, "w") as f:
+        json.dump(history, f, indent=4)
         
     print("\n" + "-" * 50)
 
