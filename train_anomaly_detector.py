@@ -162,8 +162,7 @@ def train_anomaly_module(args):
     
     joblib.dump(model_package, save_path)
 
-    log_path = args.save_path.replace(".pkl", "_history.json")
-
+    log_path = save_path.replace(".pkl", "_history.json")
     with open(log_path, "w") as f:
         json.dump(history, f, indent=4)
         
