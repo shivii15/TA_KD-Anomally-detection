@@ -1,66 +1,132 @@
+import argparse
 import os
-import torch
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, classification_report
+import json
 from datetime import datetime
 
-# Import custom modules
-from data.data_loader import preprocess_iot_data
-from models.model import StudentMLP
+import torch
+import torch.nn as nn
 
-def run_test(model_path, data_path):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"🔍 Starting Evaluation on: {device}")
+from data.data_loader import load_dataset, get_dataloaders
 
-    # 1. Load Checkpoint
-    # We use weights_only=False because the checkpoint contains the LabelEncoder
-    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
-    run_id = checkpoint.get('run_id', 'unknown_run')
-    le = checkpoint['le']
-    
-    # 2. Prepare Data
-    print("📊 Loading Test Data...")
-    _, X_test, _, y_test, _, _ = preprocess_iot_data(data_path)
-    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).to(device)
-    
-    # 3. Initialize & Load Model
-    input_dim = X_test.shape[1]
+from models.model import (
+    TeacherDNN,
+    TeacherResNet,
+    TeacherTransformer,
+    TeacherLSTM,
+    StudentMLP
+)
+def parse_args():
+
+    parser = argparse.ArgumentParser(
+        description="TGKD Evaluation Pipeline"
+    )
+
+    parser.add_argument(
+        "--dataset",
+        choices=["cic", "nbaiot"],
+        required=True
+    )
+
+    parser.add_argument(
+        "--data_path",
+        default=None,
+        type=str
+    )
+
+    parser.add_argument(
+        "--model",
+        choices=[
+            "student",
+            "dnn",
+            "resnet",
+            "transformer",
+            "lstm"
+        ],
+        required=True
+    )
+
+    parser.add_argument(
+        "--checkpoint",
+        required=True,
+        type=str
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        default=2048,
+        type=int
+    )
+
+    parser.add_argument(
+        "--num_parts",
+        default=-1,
+        type=int
+    )
+
+    return parser.parse_args()
+
+def main():
+
+    args = parse_args()
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
+    print(f"\nDevice : {device}")
+    print(f"Dataset : {args.dataset}")
+    print(f"Model : {args.model}")
+    print(f"Checkpoint : {args.checkpoint}")
+
+    X, y, le, scaler = load_dataset(args)
+    _, test_loader = get_dataloaders(
+        X,
+        y,
+        batch_size=args.batch_size
+    )
+
+    input_dim = X.shape[1]
     num_classes = len(le.classes_)
-    model = StudentMLP(input_dim, num_classes).to(device)
-    model.load_state_dict(checkpoint['model_state_dict'])
+
+    print("\nDataset Summary")
+    print("-" * 40)
+    print(f"Samples : {len(X):,}")
+    print(f"Features : {input_dim}")
+    print(f"Classes : {num_classes}")
+    print("-" * 40)
+
+    model_map = {
+        "dnn": TeacherDNN,
+        "resnet": TeacherResNet,
+        "transformer": TeacherTransformer,
+        "lstm": TeacherLSTM,
+        "student": StudentMLP
+    }
+
+    model = model_map[args.model](
+        input_dim,
+        num_classes
+    ).to(device)
+
+    checkpoint = torch.load(
+        args.checkpoint,
+        map_location=device,
+        weights_only=False
+    )
+
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
+
     model.eval()
 
-    # 4. Inference
-    print("🚀 Running Inference...")
-    with torch.no_grad():
-        outputs = model(X_test_tensor)
-        _, preds = torch.max(outputs, 1)
-        preds = preds.cpu().numpy()
-
-    # 5. Generate Metrics
-    report = classification_report(y_test, preds, target_names=le.classes_)
-    print("\n📝 Classification Report:\n", report)
-
-    # 6. Plot Confusion Matrix
-    cm = confusion_matrix(y_test, preds)
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(cm, annot=False, fmt='d', cmap='Blues', 
-                xticklabels=le.classes_, yticklabels=le.classes_)
-    plt.title(f"Confusion Matrix: {run_id}")
-    plt.ylabel('Actual')
-    plt.xlabel('Predicted')
-    
-    # Save Plot
-    plot_path = model_path.replace(".pth", "_cm.png")
-    plt.savefig(plot_path)
-    plt.show()
-    print(f"✅ Confusion Matrix saved to: {plot_path}")
+    print("\nCheckpoint Loaded Successfully")
+    print("-" * 40)
+    print(f"Model : {args.model}")
+    print(f"Dataset : {args.dataset}")
+    print(f"Classes : {num_classes}")
+    print("-" * 40)
 
 if __name__ == "__main__":
-    # Update these paths to point to your specific best model and data
-    MODEL_FILE = "./outputs/TGKD_small_a0.5_b0.1_20260315_1430/best_student_TGKD_small_a0.5_b0.1_20260315_1430.pth"
-    DATA_FILE = "./data/CICIoT2023_xxsmall.csv"
-    
-    run_test(MODEL_FILE, DATA_FILE)
+    main()
+
+
+
