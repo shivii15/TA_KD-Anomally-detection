@@ -111,6 +111,11 @@ def main():
         map_location=device,
         weights_only=False
     )
+    print("\nCheckpoint Contents")
+    print("-" * 40)
+
+    for key in checkpoint.keys():
+        print(key)
 
     model.load_state_dict(
         checkpoint["model_state_dict"]
