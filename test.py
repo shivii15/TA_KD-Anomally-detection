@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
-from models.trust_module import TGKDTrustModule
+from models.trust_gate import TGKDTrustModule
 from data.data_loader import load_dataset, get_dataloaders
 from config.default_config import DEFAULT_CONFIG
 from sklearn.preprocessing import label_binarize
