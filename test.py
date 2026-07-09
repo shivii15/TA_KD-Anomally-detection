@@ -209,10 +209,10 @@ def main():
 
     print("✅ Isolation Forest loaded.")
     trust_module = TGKDTrustModule(
-        isolation_forest=iso_model,
         base_temperature=args.temp_base
     )
-
+    trust_module.anomaly_detector = iso_model
+    
     # Initialize Committee of Experts
 
     t_resnet, resnet_ckpt = load_teacher(

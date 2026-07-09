@@ -53,6 +53,7 @@ class TGKDTrustModule(nn.Module):
         # -------------------------------
         self.anomaly_detector = None
 
+
     def load_anomaly_detector(self, model_path):
 
         package = joblib.load(model_path)
