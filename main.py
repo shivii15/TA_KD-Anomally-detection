@@ -140,8 +140,7 @@ def main():
         anomaly_weight=0.3,
         entropy_weight=0.2,
         disagreement_weight=0.1,
-        base_temperature=args.temp_base,
-        gamma=2.0
+        base_temperature=args.temp_base
     )
 
     trust_module.load_anomaly_detector(
