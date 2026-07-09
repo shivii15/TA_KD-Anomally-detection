@@ -99,6 +99,29 @@ def parse_args():
     
     return parser.parse_args()
 
+def load_teacher(model_class, checkpoint_path):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    checkpoint = torch.load(
+        checkpoint_path,
+        map_location=device,
+        weights_only=False
+    )
+
+    model = model_class(
+        checkpoint["input_dim"],
+        checkpoint["num_classes"]
+    )
+
+    model.load_state_dict(
+        checkpoint["model_state_dict"]
+    )
+
+    model = model.to(device)
+    model.eval()
+
+    return model, checkpoint
+
 def main():
 
     args = parse_args()
@@ -191,27 +214,6 @@ def main():
     )
 
     # Initialize Committee of Experts
-   def load_teacher(model_class, checkpoint_path):
-
-        checkpoint = torch.load(
-            checkpoint_path,
-            map_location=device,
-            weights_only=False
-        )
-
-        model = model_class(
-            checkpoint["input_dim"],
-            checkpoint["num_classes"]
-        )
-
-        model.load_state_dict(
-            checkpoint["model_state_dict"]
-        )
-
-        model = model.to(device)
-        model.eval()
-
-        return model, checkpoint
 
     t_resnet, resnet_ckpt = load_teacher(
         TeacherResNet,
