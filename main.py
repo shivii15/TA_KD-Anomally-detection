@@ -167,18 +167,56 @@ def main():
     # Load Anomaly Detector
     print(f"🌲 Anomaly Module Active")
 
+    print("\nExperiment Configuration")
+    print("=" * 50)
+    print(f"Dataset            : {args.dataset}")
+    print(f"Student            : StudentMLP")
+    print(f"Teacher Committee  : ResNet + Transformer + LSTM")
+    print(f"Isolation Forest   : {args.iso_path}")
+    print(f"Epochs             : {args.epochs}")
+    print(f"Batch Size         : {args.batch_size}")
+    print(f"Learning Rate      : {args.lr}")
+    print(f"Feature Weight     : {args.feat_weight}")
+    print(f"Base Temperature   : {args.temp_base}")
+    print("=" * 50)
+
     # Initialize Student
     student = StudentMLP(input_dim, num_classes).to(device)
     ema_student = copy.deepcopy(student)
     optimizer = optim.AdamW(student.parameters(), lr=args.lr, weight_decay=1e-4)
 
     # 4. Training Loop
-    history = {"train_loss": [], "val_acc": []}
+    history = {
+        "epoch": [],
+        "train_loss": [],
+        "ce_loss": [],
+        "kd_loss": [],
+        "feature_loss": [],
+        "val_acc": [],
+        "confidence": [],
+        "entropy": [],
+        "anomaly": [],
+        "disagreement": [],
+        "trust_score": [],
+        "temperature": [],
+        "lr": [],
+        "timestamp": []
+    }
     best_acc = 0.0
 
     for epoch in range(1, args.epochs + 1):
         student.train()
         total_loss = 0
+        epoch_ce_loss = 0
+        epoch_kd_loss = 0
+        epoch_feature_loss = 0
+        epoch_confidence = 0
+        epoch_entropy = 0
+        epoch_anomaly = 0
+        epoch_disagreement = 0
+        epoch_trust = 0
+        epoch_temperature = 0
+
         train_pbar = tqdm(train_loader, desc=f"🚀 Multi-Distill E{epoch}", leave=False)
 
         for i, (batch_x, batch_y) in enumerate(train_pbar):
@@ -221,6 +259,16 @@ def main():
             entropy = trust_outputs["entropy_trust"]
             anomaly = trust_outputs["anomaly_score"]
             disagreement = trust_outputs["disagreement"]
+
+            epoch_ce_loss += loss_ce.item()
+            epoch_kd_loss += loss_kd.item()
+            epoch_feature_loss += loss_feat.item()
+            epoch_confidence += confidence.mean().item()
+            epoch_entropy += entropy.mean().item()
+            epoch_anomaly += anomaly.mean().item()
+            epoch_disagreement += disagreement.mean().item()
+            epoch_trust += trust_score.mean().item()
+            epoch_temperature += temperature.mean().item()
 
             # ← VERIFY HERE
             if epoch == 1 and i == 0:
@@ -279,23 +327,81 @@ def main():
         # Validation & Logging
         val_acc = validate(student, val_loader, device)
         avg_loss = total_loss / len(train_loader)
+
+        num_batches = len(train_loader)
+        avg_ce_loss = epoch_ce_loss / num_batches
+        avg_kd_loss = epoch_kd_loss / num_batches
+        avg_feature_loss = epoch_feature_loss / num_batches
+        avg_confidence = epoch_confidence / num_batches
+        avg_entropy = epoch_entropy / num_batches
+        avg_anomaly = epoch_anomaly / num_batches
+        avg_disagreement = epoch_disagreement / num_batches
+        avg_trust = epoch_trust / num_batches
+        avg_temperature = epoch_temperature / num_batches
+
+        history["epoch"].append(epoch)
         history["train_loss"].append(avg_loss)
+        history["ce_loss"].append(avg_ce_loss)
+        history["kd_loss"].append(avg_kd_loss)
+        history["feature_loss"].append(avg_feature_loss)
         history["val_acc"].append(val_acc)
+        history["confidence"].append(avg_confidence)
+        history["entropy"].append(avg_entropy)
+        history["anomaly"].append(avg_anomaly)
+        history["disagreement"].append(avg_disagreement)
+        history["trust_score"].append(avg_trust)
+        history["temperature"].append(avg_temperature)
+        history["lr"].append(
+            optimizer.param_groups[0]["lr"]
+        )
+        history["timestamp"].append(
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
 
         with open(log_path, 'w') as f:
             json.dump(history, f, indent=4)
 
-        print(f"✅ E{epoch}: Loss {avg_loss:.4f} | Val Acc: {val_acc:.2f}%")
+        print("\n" + "=" * 65)
+        print(f"Epoch {epoch:03d}/{args.epochs}")
+        print("-" * 65)
+        print(f"Train Loss      : {avg_loss:.4f}")
+        print(f"CE Loss         : {avg_ce_loss:.4f}")
+        print(f"KD Loss         : {avg_kd_loss:.4f}")
+        print(f"Feature Loss    : {avg_feature_loss:.4f}")
+        print(f"Validation Acc  : {val_acc:.2f}%")
+        print(f"Trust Score     : {avg_trust:.4f}")
+        print(f"Temperature     : {avg_temperature:.4f}")
+        print(f"Confidence      : {avg_confidence:.4f}")
+        print(f"Entropy         : {avg_entropy:.4f}")
+        print(f"Anomaly         : {avg_anomaly:.4f}")
+        print(f"Disagreement    : {avg_disagreement:.4f}")
+        print("=" * 65)
 
         if val_acc > best_acc:
+            print(">>> Saving new best student...")
             best_acc = val_acc
             torch.save({
-                'model_state_dict': student.state_dict(),
-                'ema_state_dict': ema_student.state_dict(),
-                'classes': le.classes_,
-                'val_acc': best_acc
+                "dataset": args.dataset,
+                "student": "StudentMLP",
+                "teacher_committee": [
+                    "TeacherResNet",
+                    "TeacherTransformer",
+                    "TeacherLSTM"
+                ],
+                "epoch": epoch,
+                "model_state_dict": student.state_dict(),
+                "ema_state_dict": ema_student.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "best_val_acc": best_acc,
+                "input_dim": input_dim,
+                "num_classes": num_classes,
+                "classes": le.classes_,
+                "timestamp": timestamp
             }, best_student_path)
-            print(f"⭐ New Best Multi-Teacher Student: {val_acc:.2f}%")
+
+            print(f"⭐ New Best Multi-Teacher Student: {best_acc:.2f}%")
+            print(f"💾 Saved checkpoint to: {best_student_path}")
+            #print(f"⭐ New Best Multi-Teacher Student: {val_acc:.2f}%")
 
 if __name__ == "__main__":
     main()
