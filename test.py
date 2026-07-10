@@ -438,7 +438,6 @@ def main():
         all_features
     )
     experiment = {
-        "timestamp": timestamp,
         "checkpoint": args.checkpoint,
         "dataset": args.dataset,
         "model": args.model,
