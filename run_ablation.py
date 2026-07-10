@@ -241,20 +241,17 @@ def main():
             continue
 
 
-        results = glob.glob(
-            f"results/student_{DATASET}_*"
+        result_dir = os.path.join(
+            "experiments",
+            save_name,
+            "results"
         )
 
-        results.sort(
-            key=os.path.getmtime
-        )
-
-        result_dir = results[-1]
-
-        if len(results) == 0:
+        if not os.path.exists(result_dir):
             raise RuntimeError(
-                "No result folder produced by test.py"
+                f"Result directory not found:\n{result_dir}"
             )
+
 
         # ----------------------------------------------------
         # Save Experiment Metadata
