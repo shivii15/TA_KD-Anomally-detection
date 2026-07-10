@@ -184,7 +184,16 @@ def main():
             "--lstm_path", lstm,
             "--iso_path", iso
         ]
+        if NUM_PARTS is not None:
 
+            test_cmd.extend([
+                "--num_parts",
+                str(NUM_PARTS)
+            ])
+
+        print("\nRunning Test Command:")
+        print(" ".join(test_cmd))
+        
         subprocess.run(
             test_cmd,
             check=True
