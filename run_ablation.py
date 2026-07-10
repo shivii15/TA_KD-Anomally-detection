@@ -152,23 +152,13 @@ def main():
         print(checkpoint)
 
         test_cmd = [
-
             "python",
-
             "test.py",
-
             "--dataset", DATASET,
-
             "--checkpoint", checkpoint,
-
             "--resnet_path", resnet,
-
             "--trans_path", transformer,
-
             "--lstm_path", lstm,
-
-            "--dnn_path", dnn,
-
             "--iso_path", iso
         ]
 
