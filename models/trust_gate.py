@@ -254,6 +254,11 @@ class TGKDTrustModule(nn.Module):
         confidence = self.compute_confidence(
             teacher_logits
         )
+        # ---------------------------------------
+        # Ablation: Confidence
+        # ---------------------------------------
+        if not self.enable_confidence:
+            confidence = torch.zeros_like(confidence)
 
         entropy_trust = self.compute_entropy(
             teacher_logits
