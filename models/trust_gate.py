@@ -263,15 +263,31 @@ class TGKDTrustModule(nn.Module):
         entropy_trust = self.compute_entropy(
             teacher_logits
         )
+        # ---------------------------------------
+        # Ablation: Entropy
+        # ---------------------------------------
+        if not self.enable_entropy:
+            entropy_trust = torch.zeros_like(entropy_trust)
 
         anomaly_score = self.compute_anomaly_score(
             x_input
         )
+        # ---------------------------------------
+        # Ablation: Anomaly
+        # ---------------------------------------
+        if not self.enable_anomaly:
+            anomaly_score = torch.zeros_like(anomaly_score)
 
         disagreement = self.compute_disagreement(
             teacher_logits,
             student_logits
         )
+        # ---------------------------------------
+        # Ablation: Disagreement
+        # ---------------------------------------
+        if not self.enable_disagreement:
+            disagreement = torch.zeros_like(disagreement)
+
 
         trust_score = self.compute_trust_score(
             confidence,
@@ -283,6 +299,14 @@ class TGKDTrustModule(nn.Module):
         temperature = self.compute_temperature(
             trust_score
         )
+        # ---------------------------------------
+        # Ablation: Adaptive Temperature
+        # ---------------------------------------
+        if not self.enable_temperature:
+            temperature = torch.full_like(
+                trust_score,
+                self.base_temperature
+            )
 
         return {
 

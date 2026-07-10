@@ -352,11 +352,30 @@ def main():
                 * (temperature_kd.squeeze() ** 2)
             ).mean()
 
-            # Feature Alignment
-            loss_feat = (
-                args.feat_weight
-                * F.mse_loss(s_feat, feat_r)
-            )
+            #--------------------
+            #  Feature Alignment
+            #--------------------
+            #loss_feat = (
+            #    args.feat_weight
+            #    * F.mse_loss(s_feat, feat_r)
+            #)
+
+            if args.disable_feature:
+
+                loss_feat = torch.tensor(
+                    0.0,
+                    device=device
+                )
+
+            else:
+
+                loss_feat = (
+                    args.feat_weight *
+                    F.mse_loss(
+                        s_feat,
+                        feat_r
+                    )
+                )
 
             # Total Loss
             batch_loss = (
