@@ -64,10 +64,6 @@ def main():
         f"models/Teacher_lstm_{DATASET}_*.pth"
     )
 
-    dnn = latest(
-        f"models/Teacher_dnn_{DATASET}_*.pth"
-    )
-
     iso = latest(
         f"models/IsolationForest_{DATASET}_*.pkl"
     )
@@ -92,13 +88,12 @@ def main():
             "--batch_size", str(BATCH),
 
             "--save_name", save_name,
+            
             "--resnet_path", resnet,
 
             "--trans_path", transformer,
 
             "--lstm_path", lstm,
-
-            "--dnn_path", dnn,
 
             "--iso_path", iso
 
