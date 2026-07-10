@@ -175,7 +175,7 @@ def main():
 
     plt.close()
 
-        roc_pr_stats = {
+    roc_pr_stats = {
 
         "roc_auc": {
             str(i): float(roc_auc[i])
