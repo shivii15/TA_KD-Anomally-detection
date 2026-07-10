@@ -18,6 +18,13 @@ def main():
         required=True
     )
 
+    parser.add_argument(
+        "--tsne_samples",
+        type=int,
+        default=3000,
+        help="Maximum number of samples for t-SNE."
+    )
+
     args = parser.parse_args()
 
     features = np.load(
@@ -89,6 +96,9 @@ def main():
             f,
             indent=4
         )
+
+    print("\nRunning PCA...")
+    
     pca = PCA(
         n_components=2,
         random_state=42
@@ -133,7 +143,10 @@ def main():
 
     plt.close()
 
-    MAX_TSNE_SAMPLES = 5000
+    print("\ PCA finished...")
+    print("\nRunning TSNE...")
+
+    MAX_TSNE_SAMPLES = args.tsne_samples
 
     if len(features) > MAX_TSNE_SAMPLES:
 
@@ -152,8 +165,7 @@ def main():
         tsne_features = features
         tsne_labels = labels
 
-    print("\nRunning t-SNE...")
-
+    
     tsne = TSNE(
         n_components=2,
         perplexity=30,
@@ -191,6 +203,12 @@ def main():
         ),
         dpi=300
     )
+    print("✅ PCA completed.")
+    print("📂 Saved: pca_2d.png")
+
+    print("\nRunning t-SNE on", len(tsne_features), "samples...")
+    print("⏳ This may take several minutes.")
+
 
     plt.savefig(
         os.path.join(
@@ -231,6 +249,30 @@ def main():
             f,
             indent=4
         )
+    plt.figure(figsize=(6,4))
+
+    plt.bar(
+        ["PC1","PC2"],
+        pca.explained_variance_ratio_
+    )
+
+    plt.ylabel("Explained Variance Ratio")
+
+    plt.title("Principal Component Variance")
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            analysis_dir,
+            "pca_variance.png"
+        ),
+        dpi=300
+    )
+    print("\nFeature analysis completed successfully.")
+    print(f"Results saved to: {analysis_dir}")
+
+    plt.close()
 
 if __name__ == "__main__":
     main()
