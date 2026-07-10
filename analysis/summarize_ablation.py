@@ -16,14 +16,19 @@ def parse_args():
     return parser.parse_args()
 
 def load_experiment(folder):
-    with open(
-        os.path.join(folder, "experiment.json")
-    ) as f:
-        experiment = json.load(f)
+    experiment_file = os.path.join(folder, "experiment.json")
+    if os.path.exists(experiment_file):
+        with open(experiment_file) as f:
+            experiment = json.load(f)
+    else:
+        print(f"Skipping {folder} (no experiment.json)")
+        return None
+
     with open(
         os.path.join(folder, "metrics.json")
     ) as f:
         metrics = json.load(f)
+        
     with open(
         os.path.join(
             folder,
@@ -50,7 +55,7 @@ def load_experiment(folder):
             "Balanced Accuracy":
                 metrics["balanced_accuracy"],
             "MCC":
-                metrics["matthews_corrcoef"],
+                metrics["mcc"],
             "Mean Trust":
                 analysis["trust"]["mean"],
             "Mean Confidence":

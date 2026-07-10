@@ -125,14 +125,60 @@ def main():
 
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-    
+    #timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
     # 1. Setup Logging & Paths
     os.makedirs('models', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
 
-    best_student_path = f"models/{args.save_name}_{timestamp}_best.pth"
-    log_path = f"logs/{args.save_name}_{timestamp}_history.json"
+
+
+    # --------------------------------------------------
+    # Experiment Directories
+    # --------------------------------------------------
+
+    experiment_dir = os.path.join(
+        "experiments",
+        args.save_name
+    )
+
+    checkpoint_dir = os.path.join(
+        experiment_dir,
+        "checkpoints"
+    )
+
+    log_dir = os.path.join(
+        experiment_dir,
+        "logs"
+    )
+
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(log_dir, exist_ok=True)
+
+    # --------------------------------------------------
+    # Checkpoint Paths
+    # --------------------------------------------------
+
+    best_student_path = os.path.join(
+        checkpoint_dir,
+        "best.pth"
+    )
+
+    last_student_path = os.path.join(
+        checkpoint_dir,
+        "last.pth"
+    )
+
+    # --------------------------------------------------
+    # Training Log
+    # --------------------------------------------------
+
+    log_path = os.path.join(
+        log_dir,
+        "history.json"
+    )
+
+
 
     # 2. Load Data
     #X, y, le, _ = preprocess_iot_data(args.data_path, num_parts=args.num_parts)
@@ -249,7 +295,6 @@ def main():
         "trust_score": [],
         "temperature": [],
         "lr": [],
-        "timestamp": []
     }
     best_acc = 0.0
 
@@ -442,9 +487,6 @@ def main():
         history["lr"].append(
             optimizer.param_groups[0]["lr"]
         )
-        history["timestamp"].append(
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
 
         with open(log_path, 'w') as f:
             json.dump(history, f, indent=4)
@@ -465,31 +507,43 @@ def main():
         print(f"Disagreement    : {avg_disagreement:.4f}")
         print("=" * 65)
 
-        if val_acc > best_acc:
-            print(">>> Saving new best student...")
-            best_acc = val_acc
-            torch.save({
-                "dataset": args.dataset,
-                "student": "StudentMLP",
-                "teacher_committee": [
-                    "TeacherResNet",
-                    "TeacherTransformer",
-                    "TeacherLSTM"
-                ],
-                "epoch": epoch,
-                "model_state_dict": student.state_dict(),
-                "ema_state_dict": ema_student.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "best_val_acc": best_acc,
-                "input_dim": input_dim,
-                "num_classes": num_classes,
-                "classes": le.classes_,
-                "timestamp": timestamp
-            }, best_student_path)
+        checkpoint = {
+            "dataset": args.dataset,
+            "student": "StudentMLP",
+            "teacher_committee": [
+                "TeacherResNet",
+                "TeacherTransformer",
+                "TeacherLSTM"
+            ],
+            "epoch": epoch,
+            "model_state_dict": student.state_dict(),
+            "ema_state_dict": ema_student.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "best_val_acc": val_acc,
+            "input_dim": input_dim,
+            "num_classes": num_classes,
+            "classes": le.classes_
+        }
+        torch.save(
+            checkpoint,
+            last_student_path
+        )
 
-            print(f"⭐ New Best Multi-Teacher Student: {best_acc:.2f}%")
-            print(f"💾 Saved checkpoint to: {best_student_path}")
-            #print(f"⭐ New Best Multi-Teacher Student: {val_acc:.2f}%")
+        if val_acc > best_acc:
+
+            print(">>> Saving new best student...")
+
+            best_acc = val_acc
+
+            checkpoint["best_val_acc"] = best_acc
+
+            torch.save(
+                checkpoint,
+                best_student_path
+            )
+
+            print(f"⭐ New Best Student : {best_acc:.2f}%")
+            print(f"💾 Saved to: {best_student_path}")
 
 if __name__ == "__main__":
     main()

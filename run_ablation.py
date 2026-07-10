@@ -191,21 +191,18 @@ def main():
         # Locate newly created checkpoint
         # ----------------------------------------------------
 
-        checkpoints = glob.glob(
-            f"models/{save_name}_*_best.pth"
+        checkpoint = os.path.join(
+            "experiments",
+            save_name,
+            "checkpoints",
+            "best.pth"
         )
+        if not os.path.exists(checkpoint):
 
-        checkpoints.sort(
-            key=os.path.getmtime
-        )
-
-        checkpoint = checkpoints[-1]
-        if len(checkpoints) == 0:
             raise RuntimeError(
-                f"No checkpoint created for {save_name}"
+                f"Checkpoint not found:\n{checkpoint}"
             )
 
-        checkpoint = checkpoints[-1]
 
         print("\nLatest Checkpoint")
 

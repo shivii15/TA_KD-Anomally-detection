@@ -126,15 +126,18 @@ def main():
 
     args = parse_args()
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    checkpoint_name = os.path.splitext(
+        os.path.basename(args.checkpoint)
+    )[0]
 
-    experiment_name = (
-        f"{args.model}_{args.dataset}_{timestamp}"
-    )
+    # Remove "_best" if present
+    checkpoint_name = checkpoint_name.replace("_best", "")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     result_dir = os.path.join(
         "results",
-        experiment_name
+        f"{checkpoint_name}_{timestamp}"
     )
 
     os.makedirs(result_dir, exist_ok=True)
