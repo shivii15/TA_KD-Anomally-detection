@@ -3,6 +3,57 @@ import argparse
 import glob
 import os
 
+def parse_args():
+
+    parser = argparse.ArgumentParser(
+        description="TGKD Ablation Experiment Manager"
+    )
+
+    parser.add_argument(
+        "--dataset",
+        choices=["nbaiot", "cic"],
+        default="nbaiot"
+    )
+
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=100
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=1024
+    )
+
+    parser.add_argument(
+        "--num_parts",
+        type=int,
+        default=None,
+        help="Number of dataset partitions to load."
+    )
+
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=1e-3
+    )
+
+    parser.add_argument(
+        "--feat_weight",
+        type=float,
+        default=0.5
+    )
+
+    parser.add_argument(
+        "--temp_base",
+        type=float,
+        default=3.0
+    )
+
+    return parser.parse_args()
+
 def latest(pattern):
     files = glob.glob(pattern)
 
@@ -47,36 +98,7 @@ def main():
         ["--disable_feature"])
     ]
 
-    parser = argparse.ArgumentParser(
-        description="Run TGKD ablation experiments."
-    )
-
-    parser.add_argument(
-        "--dataset",
-        default="nbaiot",
-        choices=["nbaiot", "cic"]
-    )
-
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=100
-    )
-
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=1024
-    )
-
-    parser.add_argument(
-        "--num_parts",
-        type=int,
-        default=None,
-        help="Number of dataset files to use (for debugging)."
-    )
-
-    args = parser.parse_args()
+    args = parse_args()
 
     DATASET = args.dataset
     EPOCHS = args.epochs
@@ -155,6 +177,7 @@ def main():
             "python",
             "test.py",
             "--dataset", DATASET,
+            "--model","student",
             "--checkpoint", checkpoint,
             "--resnet_path", resnet,
             "--trans_path", transformer,
