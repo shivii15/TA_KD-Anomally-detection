@@ -68,6 +68,15 @@ def latest(pattern):
     return files[-1]
 
 def main():
+    args = parse_args()
+
+    DATASET = args.dataset
+    EPOCHS = args.epochs
+    BATCH = args.batch_size
+    NUM_PARTS = args.num_parts
+    LR = args.lr
+    FEAT_WEIGHT = args.feat_weight
+    TEMP_BASE = args.temp_base
     print("\nExperiment Manager")
     print("="*70)
 
@@ -111,15 +120,7 @@ def main():
         ["--disable_feature"])
     ]
 
-    args = parse_args()
 
-    DATASET = args.dataset
-    EPOCHS = args.epochs
-    BATCH = args.batch_size
-    NUM_PARTS = args.num_parts
-    LR = args.lr
-    FEAT_WEIGHT = args.feat_weight
-    TEMP_BASE = args.temp_base
 
     resnet = latest(
         f"models/Teacher_resnet_{DATASET}_*.pth"
