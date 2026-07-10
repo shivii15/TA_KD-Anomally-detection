@@ -28,7 +28,7 @@ def load_experiment(folder):
         os.path.join(folder, "metrics.json")
     ) as f:
         metrics = json.load(f)
-        
+
     with open(
         os.path.join(
             folder,
@@ -103,6 +103,10 @@ def main():
             print(f"\nError reading {folder}")
             print(e)
     df = pd.DataFrame(rows)
+    if df.empty:
+        print("\nNo valid experiments found.")
+        return
+
     print("\nRows collected:", len(rows))
     print(df)
     print(df.columns)

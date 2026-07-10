@@ -133,11 +133,22 @@ def main():
     # Remove "_best" if present
     checkpoint_name = checkpoint_name.replace("_best", "")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    experiment_dir = os.path.dirname(
+        os.path.dirname(
+            args.checkpoint
+        )
+    )
 
     result_dir = os.path.join(
-        "results",
-        f"{checkpoint_name}_{timestamp}"
+        experiment_dir,
+        "results"
+    )
+
+    os.makedirs(
+        result_dir,
+        exist_ok=True
     )
 
     os.makedirs(result_dir, exist_ok=True)
