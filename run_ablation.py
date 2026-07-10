@@ -1,5 +1,5 @@
 import subprocess
-
+import argparse
 import glob
 import os
 
@@ -47,11 +47,42 @@ def main():
         ["--disable_feature"])
     ]
 
-    DATASET = "nbaiot"
+    parser = argparse.ArgumentParser(
+        description="Run TGKD ablation experiments."
+    )
 
-    EPOCHS = 100
+    parser.add_argument(
+        "--dataset",
+        default="nbaiot",
+        choices=["nbaiot", "cic"]
+    )
 
-    BATCH = 1024
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=100
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=1024
+    )
+
+    parser.add_argument(
+        "--num_parts",
+        type=int,
+        default=None,
+        help="Number of dataset files to use (for debugging)."
+    )
+
+    args = parser.parse_args()
+
+    DATASET = args.dataset
+    EPOCHS = args.epochs
+    BATCH = args.batch_size
+    NUM_PARTS = args.num_parts
+
     resnet = latest(
         f"models/Teacher_resnet_{DATASET}_*.pth"
     )
@@ -76,30 +107,26 @@ def main():
         print("="*80)
 
         cmd = [
-
             "python",
-
             "main.py",
-
             "--dataset", DATASET,
-
             "--epochs", str(EPOCHS),
-
             "--batch_size", str(BATCH),
-
             "--save_name", save_name,
-            
             "--resnet_path", resnet,
-
             "--trans_path", transformer,
-
             "--lstm_path", lstm,
-
             "--iso_path", iso
-
         ]
 
         cmd.extend(flags)
+
+        if NUM_PARTS is not None:
+
+            cmd.extend([
+                "--num_parts",
+                str(NUM_PARTS)
+            ])
 
         subprocess.run(
             cmd,
