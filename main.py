@@ -79,6 +79,43 @@ def main():
     parser.add_argument('--temp_base', type=float, default=DEFAULT_CONFIG["temp_base"])
     parser.add_argument('--feat_weight', type=float, default=DEFAULT_CONFIG["feat_weight"])
     parser.add_argument('--save_name', type=str, default="Student_MultiTeacher_TGKD")
+
+    parser.add_argument(
+        "--disable_confidence",
+        action="store_true",
+        help="Disable confidence component."
+    )
+
+    parser.add_argument(
+        "--disable_entropy",
+        action="store_true",
+        help="Disable entropy component."
+    )
+
+    parser.add_argument(
+        "--disable_anomaly",
+        action="store_true",
+        help="Disable anomaly component."
+    )
+
+    parser.add_argument(
+        "--disable_disagreement",
+        action="store_true",
+        help="Disable disagreement component."
+    )
+
+    parser.add_argument(
+        "--disable_temperature",
+        action="store_true",
+        help="Disable adaptive temperature."
+    )
+
+    parser.add_argument(
+        "--disable_feature",
+        action="store_true",
+        help="Disable feature alignment."
+    )
+
     args = parser.parse_args()
 
     if args.dataset == "cic" and args.data_path is None:
