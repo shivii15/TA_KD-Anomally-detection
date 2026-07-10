@@ -68,6 +68,18 @@ def latest(pattern):
     return files[-1]
 
 def main():
+    print("\nExperiment Manager")
+    print("="*70)
+
+    print("Dataset :", DATASET)
+    print("Epochs :", EPOCHS)
+    print("Batch :", BATCH)
+    print("Num Parts :", NUM_PARTS)
+    print("Learning Rate :", LR)
+    print("Feature Weight :", FEAT_WEIGHT)
+    print("Temperature :", TEMP_BASE)
+
+    print("="*70)
     ABLATIONS = [
 
         ("Full TGKD",
@@ -105,6 +117,9 @@ def main():
     EPOCHS = args.epochs
     BATCH = args.batch_size
     NUM_PARTS = args.num_parts
+    LR = args.lr
+    FEAT_WEIGHT = args.feat_weight
+    TEMP_BASE = args.temp_base
 
     resnet = latest(
         f"models/Teacher_resnet_{DATASET}_*.pth"
@@ -121,6 +136,14 @@ def main():
     iso = latest(
         f"models/IsolationForest_{DATASET}_*.pkl"
     )
+
+    print("\nTeacher Models")
+    print("-"*50)
+    print(resnet)
+    print(transformer)
+    print(lstm)
+    print(iso)
+    print("-"*50)
 
     for name, save_name, flags in ABLATIONS:
 
@@ -151,10 +174,17 @@ def main():
                 str(NUM_PARTS)
             ])
 
-        subprocess.run(
-            cmd,
-            check=True
-        )
+
+        try:
+            subprocess.run(
+                cmd,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"\nExperiment failed: {name}")
+            print(e)
+            continue
+
 
         # ----------------------------------------------------
         # Locate newly created checkpoint
@@ -167,6 +197,12 @@ def main():
         checkpoints.sort(
             key=os.path.getmtime
         )
+
+        checkpoint = checkpoints[-1]
+        if len(checkpoints) == 0:
+            raise RuntimeError(
+                f"No checkpoint created for {save_name}"
+            )
 
         checkpoint = checkpoints[-1]
 
@@ -195,10 +231,17 @@ def main():
         print("\nRunning Test Command:")
         print(" ".join(test_cmd))
 
-        subprocess.run(
-            test_cmd,
-            check=True
-        )
+
+        try:
+            subprocess.run(
+                test_cmd,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"\nExperiment failed: {name}")
+            print(e)
+            continue
+
 
         results = glob.glob(
             f"results/student_{DATASET}_*"
@@ -210,12 +253,17 @@ def main():
 
         result_dir = results[-1]
 
+        if len(results) == 0:
+            raise RuntimeError(
+                "No result folder produced by test.py"
+            )
+
         # ----------------------------------------------------
         # Save Experiment Metadata
         # ----------------------------------------------------
 
         experiment_info = {
-            "experiment": experiment_name,
+            "experiment": name,
             "save_name": save_name,
             "dataset": DATASET,
             "epochs": EPOCHS,
@@ -257,21 +305,23 @@ def main():
         #----------------
 
         snap = [
-
             "python",
-
             "analysis/snap_analysis.py",
-
             "--result_dir",
-
             result_dir
-
         ]
 
-        subprocess.run(
-            snap,
-            check=True
-        )
+
+        try:
+            subprocess.run(
+                snap,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"\nExperiment failed: {name}")
+            print(e)
+            continue
+
 
         #------------------
         # Feature Analysis 
@@ -289,10 +339,17 @@ def main():
 
         ]
 
-        subprocess.run(
-            feature,
-            check=True
-        )
+
+        try:
+            subprocess.run(
+                feature,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"\nExperiment failed: {name}")
+            print(e)
+            continue
+
 
         #------------------
         # ROC Analysis 
@@ -310,12 +367,16 @@ def main():
 
         ]
 
-        subprocess.run(
-            roc,
-            check=True
-        )
 
-
+        try:
+            subprocess.run(
+                roc,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"\nExperiment failed: {name}")
+            print(e)
+            continue
 
     print("\nAll ablations completed.")
 
