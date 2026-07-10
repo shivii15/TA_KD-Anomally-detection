@@ -173,7 +173,7 @@ def main():
     plt.savefig(
         os.path.join(
             analysis_dir,
-            pdf_name
+            filename
         ),
         dpi=300
     )
