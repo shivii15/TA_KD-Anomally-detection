@@ -126,13 +126,6 @@ def main():
 
     args = parse_args()
 
-    checkpoint_name = os.path.splitext(
-        os.path.basename(args.checkpoint)
-    )[0]
-
-    # Remove "_best" if present
-    checkpoint_name = checkpoint_name.replace("_best", "")
-
     #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     experiment_dir = os.path.dirname(
@@ -151,7 +144,6 @@ def main():
         exist_ok=True
     )
 
-    os.makedirs(result_dir, exist_ok=True)
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
