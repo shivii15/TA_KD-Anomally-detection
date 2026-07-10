@@ -24,7 +24,12 @@ class TGKDTrustModule(nn.Module):
         disagreement_weight=0.1,
         base_temperature=2.0,
         lambda_temp=1.0,
-        trust_method="weighted"
+        trust_method="weighted",
+        enable_confidence=True,
+        enable_entropy=True,
+        enable_anomaly=True,
+        enable_disagreement=True,
+        enable_temperature=True
     ):
         super().__init__()
 
@@ -46,6 +51,11 @@ class TGKDTrustModule(nn.Module):
         # Trust Strategy
         # -------------------------------
         self.trust_method = trust_method
+        self.enable_confidence = enable_confidence
+        self.enable_entropy = enable_entropy
+        self.enable_anomaly = enable_anomaly
+        self.enable_disagreement = enable_disagreement
+        self.enable_temperature = enable_temperature
 
         # -------------------------------
         # Placeholder for trained
