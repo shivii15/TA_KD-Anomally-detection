@@ -31,7 +31,7 @@ def print_statistics(name, values):
 
     print("-"*40)
 
-def save_histogram(values, title, filename,analysis_dir):
+def save_histogram(values, title, filename, analysis_dir):
     plt.figure(figsize=(7,5))
     plt.hist(
         values,
@@ -43,12 +43,22 @@ def save_histogram(values, title, filename,analysis_dir):
     plt.ylabel("Samples")
     plt.grid(alpha=0.3)
     plt.tight_layout()
+    # PNG
     plt.savefig(
         os.path.join(
             analysis_dir,
             filename
         ),
         dpi=300
+    )
+
+    # PDF
+    plt.savefig(
+        os.path.join(
+            analysis_dir,
+            filename.replace(".png", ".pdf")
+        ),
+        bbox_inches="tight"
     )
     plt.close()
     
@@ -146,7 +156,6 @@ def main():
         )
 
     
-    pdf_name = filename.replace(".png", ".pdf")
 
     plt.figure(figsize=(8,5))
 
