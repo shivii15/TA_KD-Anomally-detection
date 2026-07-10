@@ -130,6 +130,7 @@ def main():
     # 1. Setup Logging & Paths
     os.makedirs('models', exist_ok=True)
     os.makedirs('logs', exist_ok=True)
+
     best_student_path = f"models/{args.save_name}_{timestamp}_best.pth"
     log_path = f"logs/{args.save_name}_{timestamp}_history.json"
 
