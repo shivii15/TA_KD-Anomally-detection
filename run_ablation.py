@@ -2,6 +2,7 @@ import subprocess
 import argparse
 import glob
 import os
+import json
 
 def parse_args():
 
@@ -193,7 +194,7 @@ def main():
 
         print("\nRunning Test Command:")
         print(" ".join(test_cmd))
-        
+
         subprocess.run(
             test_cmd,
             check=True
@@ -208,6 +209,46 @@ def main():
         )
 
         result_dir = results[-1]
+
+        # ----------------------------------------------------
+        # Save Experiment Metadata
+        # ----------------------------------------------------
+
+        experiment_info = {
+            "experiment": experiment_name,
+            "save_name": save_name,
+            "dataset": DATASET,
+            "epochs": EPOCHS,
+            "batch_size": BATCH,
+            "learning_rate": LR,
+            "feature_weight": FEAT_WEIGHT,
+            "base_temperature": TEMP_BASE,
+            "num_parts": NUM_PARTS,
+            "checkpoint": checkpoint,
+            "teacher_committee": [
+                os.path.basename(resnet),
+                os.path.basename(transformer),
+                os.path.basename(lstm)
+            ],
+            "isolation_forest": os.path.basename(iso),
+            "ablation_flags": flags
+        }
+
+        with open(
+            os.path.join(
+                result_dir,
+                "experiment.json"
+            ),
+            "w"
+        ) as f:
+
+            json.dump(
+                experiment_info,
+                f,
+                indent=4
+            )
+
+        print("✓ Experiment metadata saved.")
 
         print(result_dir)
 
