@@ -173,7 +173,7 @@ def main():
     plt.savefig(
         os.path.join(
             analysis_dir,
-            filename
+            "Trust_Score_Distribution.png"
         ),
         dpi=300
     )
@@ -191,7 +191,7 @@ def main():
     plt.savefig(
         os.path.join(
             analysis_dir,
-            pdf_name
+            "Trust_Score_boxplot.png"
         ),
         dpi=300
     )
