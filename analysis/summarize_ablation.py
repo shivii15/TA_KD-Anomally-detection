@@ -17,21 +17,24 @@ def parse_args():
     return parser.parse_args()
 
 def load_experiment(folder):
-    print("\nChecking:")
-    print("Folder :", folder)
-    print("Experiment file :", experiment_file)
-    print("Exists :", os.path.exists(experiment_file))
     experiment_file = os.path.join(
         folder,
         "experiment.json"
     )
-    if os.path.exists(experiment_file):
-        with open(experiment_file) as f:
-            experiment = json.load(f)
-    else:
+
+    print("\nChecking:")
+    print("Folder :", folder)
+    print("Experiment file :", experiment_file)
+    print("Exists :", os.path.exists(experiment_file))
+
+    if not os.path.exists(experiment_file):
         print(f"Skipping {folder} (no experiment.json)")
         return None
 
+    with open(experiment_file) as f:
+        experiment = json.load(f)
+
+        
     with open(
         os.path.join(folder, "metrics.json")
     ) as f:
