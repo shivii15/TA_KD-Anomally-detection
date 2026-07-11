@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 from tqdm import tqdm
 from config.default_config import DEFAULT_CONFIG
-
+from datetime import datetime
 from data.data_loader import load_dataset, get_dataloaders
 from models.model import (
     TeacherResNet,
@@ -125,7 +125,7 @@ def main():
 
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
     # 1. Setup Logging & Paths
     os.makedirs('models', exist_ok=True)
@@ -137,9 +137,15 @@ def main():
     # Experiment Directories
     # --------------------------------------------------
 
+    experiment_name = (
+        f"{args.save_name}_"
+        f"{args.dataset}_"
+        f"{timestamp}"
+    )
+
     experiment_dir = os.path.join(
         "experiments",
-        args.save_name
+        experiment_name
     )
 
     checkpoint_dir = os.path.join(

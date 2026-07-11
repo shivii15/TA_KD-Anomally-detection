@@ -1,13 +1,14 @@
 import os
 import json
 import argparse
-
+import glob
 import pandas as pd
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--results_dir",
-        default="results"
+        "--experiments_dir",
+        default="experiments"
     )
     parser.add_argument(
         "--output_dir",
@@ -16,7 +17,10 @@ def parse_args():
     return parser.parse_args()
 
 def load_experiment(folder):
-    experiment_file = os.path.join(folder, "experiment.json")
+    experiment_file = os.path.join(
+        os.path.dirname(folder),
+        "experiment.json"
+    )
     if os.path.exists(experiment_file):
         with open(experiment_file) as f:
             experiment = json.load(f)
@@ -74,31 +78,24 @@ def main():
     args = parse_args()
 
     rows = []
+
     folders = sorted(
-        [
+        glob.glob(
             os.path.join(
-                args.results_dir,
-                d
+                args.experiments_dir,
+                "*",
+                "results"
             )
-            for d in os.listdir(
-                args.results_dir
-            )
-            if os.path.isdir(
-                os.path.join(
-                    args.results_dir,
-                    d
-                )
-            )
-        ]
+        )
     )
     print("\nFolders found:")
 
     for folder in folders:
         print(folder)
         try:
-            rows.append(
-                load_experiment(folder)
-            )
+            experiment = load_experiment(folder)
+            if experiment is not None:
+                rows.append(experiment)
         except Exception as e:
             print(f"\nError reading {folder}")
             print(e)
@@ -108,18 +105,18 @@ def main():
         return
 
     print("\nRows collected:", len(rows))
-    print(df)
+    print("\nLoaded Experiments")
+    print(df[["Experiment","Accuracy","F1"]])
     print(df.columns)
     order = [
         "Full TGKD",
-        "Confidence",
-        "Entropy",
-        "Anomaly",
-        "Disagreement",
-        "Temperature",
-        "Feature"
+        "Ablation Confidence",
+        "Ablation Entropy",
+        "Ablation Anomaly",
+        "Ablation Disagreement",
+        "Ablation Temperature",
+        "Ablation Feature"
     ]
-
     df["Experiment"] = pd.Categorical(
         df["Experiment"],
         categories=order,
@@ -156,6 +153,18 @@ def main():
         index=False,
         float_format="%.4f"
     )
+    with open(
+        os.path.join(
+            args.output_dir,
+            "ablation_table.md"
+        ),
+        "w"
+    ) as f:
+
+        f.write(
+            df.to_markdown(index=False)
+        )
+        
     print()
     print(df)
     print()

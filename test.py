@@ -126,12 +126,17 @@ def main():
 
     args = parse_args()
 
-    #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    experiment_dir = os.path.dirname(
-        os.path.dirname(
-            args.checkpoint
-        )
+    experiment_name = (
+        f"{args.save_name}_"
+        f"{args.dataset}_"
+        f"{timestamp}"
+    )
+
+    experiment_dir = os.path.join(
+        "experiments",
+        experiment_name
     )
 
     result_dir = os.path.join(

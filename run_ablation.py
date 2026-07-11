@@ -268,6 +268,10 @@ def main():
             "base_temperature": TEMP_BASE,
             "num_parts": NUM_PARTS,
             "checkpoint": checkpoint,
+
+            # ADD THIS
+            "experiment_directory": experiment_dir,
+
             "teacher_committee": [
                 os.path.basename(resnet),
                 os.path.basename(transformer),
