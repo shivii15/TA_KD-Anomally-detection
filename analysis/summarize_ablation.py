@@ -3,6 +3,7 @@ import json
 import argparse
 import glob
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -34,7 +35,7 @@ def load_experiment(folder):
     with open(experiment_file) as f:
         experiment = json.load(f)
 
-        
+
     with open(
         os.path.join(folder, "metrics.json")
     ) as f:
@@ -81,6 +82,40 @@ def load_experiment(folder):
                 analysis["temperature"]["mean"]
         }
     
+def plot_metric(
+    df,
+    metric,
+    output_dir,
+    filename
+):
+    plt.figure(figsize=(8,5))
+    bars = plt.bar(
+        df["Experiment"],
+        df[metric]
+    )
+    bars[0].set_hatch("//")
+
+    plt.ylabel(metric)
+
+    plt.title(metric)
+
+    plt.xticks(
+        rotation=20,
+        ha="right"
+    )
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            output_dir,
+            filename
+        ),
+        dpi=300
+    )
+
+    plt.close()
+    
 def main():
     args = parse_args()
 
@@ -124,6 +159,27 @@ def main():
         "Ablation Temperature",
         "Ablation Feature"
     ]
+    column_order = [
+        "Experiment",
+        "Dataset",
+        "Epochs",
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1",
+        "Balanced Accuracy",
+        "MCC",
+        "Mean Trust",
+        "Mean Confidence",
+        "Mean Entropy",
+        "Mean Anomaly",
+        "Mean Disagreement",
+        "Mean Temperature"
+    ]
+
+    df = df[column_order]
+
+    df = df.round(4)
     df["Experiment"] = pd.Categorical(
         df["Experiment"],
         categories=order,
@@ -172,6 +228,47 @@ def main():
             df.to_markdown(index=False)
         )
 
+    plot_metric(
+        df,
+        "Accuracy",
+        args.output_dir,
+        "accuracy_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Precision",
+        args.output_dir,
+        "precision_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Recall",
+        args.output_dir,
+        "recall_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "F1",
+        args.output_dir,
+        "f1_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Balanced Accuracy",
+        args.output_dir,
+        "balanced_accuracy_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "MCC",
+        args.output_dir,
+        "mcc_bar.png"
+    )
     print()
     print(df)
     print()
