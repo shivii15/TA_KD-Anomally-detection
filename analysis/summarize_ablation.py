@@ -17,8 +17,12 @@ def parse_args():
     return parser.parse_args()
 
 def load_experiment(folder):
+    print("\nChecking:")
+    print("Folder :", folder)
+    print("Experiment file :", experiment_file)
+    print("Exists :", os.path.exists(experiment_file))
     experiment_file = os.path.join(
-        os.path.dirname(folder),
+        folder,
         "experiment.json"
     )
     if os.path.exists(experiment_file):
@@ -164,7 +168,7 @@ def main():
         f.write(
             df.to_markdown(index=False)
         )
-        
+
     print()
     print(df)
     print()

@@ -89,6 +89,9 @@ def main():
             f,
             indent=4
         )
+
+    print("\nRunning PCA...")
+
     pca = PCA(
         n_components=2,
         random_state=42
@@ -132,6 +135,8 @@ def main():
     )
 
     plt.close()
+    print("\nPCA of student features saved ..")
+
 
     MAX_TSNE_SAMPLES = 5000
 
@@ -201,6 +206,7 @@ def main():
     )
 
     plt.close()
+    print("\nt-SNE of Student Feature Space saved ...")
 
     variance = {
 
