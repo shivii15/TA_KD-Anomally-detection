@@ -269,6 +269,59 @@ def main():
         args.output_dir,
         "mcc_bar.png"
     )
+    plot_metric(
+        df,
+        "Mean Trust",
+        args.output_dir,
+        "trust_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Mean Confidence",
+        args.output_dir,
+        "confidence_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Mean Entropy",
+        args.output_dir,
+        "entropy_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Mean Anomaly",
+        args.output_dir,
+        "anomaly_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Mean Disagreement",
+        args.output_dir,
+        "disagreement_bar.png"
+    )
+
+    plot_metric(
+        df,
+        "Mean Temperature",
+        args.output_dir,
+        "temperature_bar.png"
+    )
+
+    plot_df = df.copy()
+
+    plot_df["Experiment"] = plot_df["Experiment"].replace({
+        "Ablation Confidence": "-Confidence",
+        "Ablation Entropy": "-Entropy",
+        "Ablation Anomaly": "-Anomaly",
+        "Ablation Disagreement": "-Disagreement",
+        "Ablation Temperature": "-Temperature",
+        "Ablation Feature": "-Feature"
+    })
+
     print()
     print(df)
     print()
