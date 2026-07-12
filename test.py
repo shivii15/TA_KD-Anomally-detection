@@ -126,28 +126,16 @@ def main():
 
     args = parse_args()
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    checkpoint_dir = os.path.dirname(args.checkpoint)
 
-    experiment_name = (
-        f"{args.save_name}_"
-        f"{args.dataset}_"
-        f"{timestamp}"
-    )
-
-    experiment_dir = os.path.join(
-        "experiments",
-        experiment_name
-    )
+    experiment_dir = os.path.dirname(checkpoint_dir)
 
     result_dir = os.path.join(
         experiment_dir,
         "results"
     )
 
-    os.makedirs(
-        result_dir,
-        exist_ok=True
-    )
+    os.makedirs(result_dir, exist_ok=True)
 
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"

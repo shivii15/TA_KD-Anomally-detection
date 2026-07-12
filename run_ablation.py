@@ -312,8 +312,7 @@ def main():
 
 
         result_dir = os.path.join(
-            "experiments",
-            save_name,
+            experiment_dir,
             "results"
         )
 
@@ -338,6 +337,7 @@ def main():
             "base_temperature": TEMP_BASE,
             "num_parts": NUM_PARTS,
             "checkpoint": checkpoint,
+            "experiment_directory": experiment_dir,
 
             # ADD THIS
             #"experiment_directory": experiment_dir,
