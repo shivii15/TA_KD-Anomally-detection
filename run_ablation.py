@@ -238,12 +238,30 @@ def main():
         # Locate newly created checkpoint
         # ----------------------------------------------------
 
+        experiment_dirs = glob.glob(
+            os.path.join(
+                "experiments",
+                f"{save_name}_*"
+            )
+        )
+
+        if len(experiment_dirs) == 0:
+            raise RuntimeError(
+                f"No experiment folder found for {save_name}"
+            )
+
+        experiment_dirs.sort(
+            key=os.path.getmtime
+        )
+
+        experiment_dir = experiment_dirs[-1]
+
         checkpoint = os.path.join(
-            "experiments",
-            save_name,
+            experiment_dir,
             "checkpoints",
             "best.pth"
         )
+
         if not os.path.exists(checkpoint):
 
             raise RuntimeError(
