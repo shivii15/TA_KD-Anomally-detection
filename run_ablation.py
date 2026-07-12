@@ -52,7 +52,40 @@ def parse_args():
         type=float,
         default=3.0
     )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=None,
+        help="Dataset directory."
+    )
 
+    parser.add_argument(
+        "--resnet_path",
+        type=str,
+        default=None,
+        help="Path to ResNet teacher."
+    )
+
+    parser.add_argument(
+        "--trans_path",
+        type=str,
+        default=None,
+        help="Path to Transformer teacher."
+    )
+
+    parser.add_argument(
+        "--lstm_path",
+        type=str,
+        default=None,
+        help="Path to LSTM teacher."
+    )
+
+    parser.add_argument(
+        "--iso_path",
+        type=str,
+        default=None,
+        help="Path to Isolation Forest."
+    )
     return parser.parse_args()
 
 def latest(pattern):
@@ -122,20 +155,28 @@ def main():
 
 
 
-    resnet = latest(
-        f"models/Teacher_resnet_{DATASET}_*.pth"
+    resnet = (
+        args.resnet_path
+        if args.resnet_path
+        else latest(f"models/Teacher_resnet_{DATASET}_*.pth")
     )
 
-    transformer = latest(
-        f"models/Teacher_transformer_{DATASET}_*.pth"
+    transformer = (
+        args.trans_path
+        if args.trans_path
+        else latest(f"models/Teacher_transformer_{DATASET}_*.pth")
     )
 
-    lstm = latest(
-        f"models/Teacher_lstm_{DATASET}_*.pth"
+    lstm = (
+        args.lstm_path
+        if args.lstm_path
+        else latest(f"models/Teacher_lstm_{DATASET}_*.pth")
     )
 
-    iso = latest(
-        f"models/IsolationForest_{DATASET}_*.pkl"
+    iso = (
+        args.iso_path
+        if args.iso_path
+        else latest(f"models/IsolationForest_{DATASET}_*.pkl")
     )
 
     print("\nTeacher Models")
@@ -167,6 +208,12 @@ def main():
         ]
 
         cmd.extend(flags)
+
+        if args.data_path is not None:
+            cmd.extend([
+                "--data_path",
+                args.data_path
+            ])
 
         if NUM_PARTS is not None:
 
@@ -225,6 +272,11 @@ def main():
                 "--num_parts",
                 str(NUM_PARTS)
             ])
+        if args.data_path is not None:
+            test_cmd.extend([
+                "--data_path",
+                args.data_path
+            ])
 
         print("\nRunning Test Command:")
         print(" ".join(test_cmd))
@@ -270,7 +322,7 @@ def main():
             "checkpoint": checkpoint,
 
             # ADD THIS
-            "experiment_directory": experiment_dir,
+            #"experiment_directory": experiment_dir,
 
             "teacher_committee": [
                 os.path.basename(resnet),
