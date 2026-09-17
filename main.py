@@ -528,7 +528,17 @@ def main():
             "best_val_acc": val_acc,
             "input_dim": input_dim,
             "num_classes": num_classes,
-            "classes": le.classes_
+            "classes": le.classes_,
+
+            # -------- NEW --------
+            "trust_config": {
+                "base_temperature": args.temp_base,
+                "enable_confidence": not args.disable_confidence,
+                "enable_entropy": not args.disable_entropy,
+                "enable_anomaly": not args.disable_anomaly,
+                "enable_disagreement": not args.disable_disagreement,
+                "enable_temperature": not args.disable_temperature
+            }
         }
         torch.save(
             checkpoint,

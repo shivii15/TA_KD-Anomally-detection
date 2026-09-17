@@ -215,6 +215,12 @@ def main():
                 args.data_path
             ])
 
+        # Pass the same ablation flags used during training
+        test_cmd.extend(flags)  
+
+        print("\nRunning Test Command:")
+        print(" ".join(test_cmd))
+
         if NUM_PARTS is not None:
 
             cmd.extend([

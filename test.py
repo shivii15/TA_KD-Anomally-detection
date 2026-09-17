@@ -53,6 +53,36 @@ def parse_args():
         default=3.0
     )
     parser.add_argument(
+        "--disable_confidence",
+        action="store_true",
+        help="Disable confidence component."
+    )
+
+    parser.add_argument(
+        "--disable_entropy",
+        action="store_true",
+        help="Disable entropy component."
+    )
+
+    parser.add_argument(
+        "--disable_anomaly",
+        action="store_true",
+        help="Disable anomaly component."
+    )
+
+    parser.add_argument(
+        "--disable_disagreement",
+        action="store_true",
+        help="Disable disagreement component."
+    )
+
+    parser.add_argument(
+        "--disable_temperature",
+        action="store_true",
+        help="Disable adaptive temperature."
+    )
+
+    parser.add_argument(
         "--dataset",
         choices=["cic", "nbaiot"],
         required=True
@@ -208,10 +238,28 @@ def main():
 
     print("✅ Isolation Forest loaded.")
     trust_module = TGKDTrustModule(
-        base_temperature=args.temp_base
+        base_temperature=args.temp_base,
+
+        enable_confidence=not args.disable_confidence,
+        enable_entropy=not args.disable_entropy,
+        enable_anomaly=not args.disable_anomaly,
+        enable_disagreement=not args.disable_disagreement,
+        enable_temperature=not args.disable_temperature
     )
+
+
     trust_module.anomaly_detector = iso_model
     
+    print("\nEvaluation Trust Configuration")
+    print("-" * 40)
+    print(f"Confidence    : {trust_module.enable_confidence}")
+    print(f"Entropy       : {trust_module.enable_entropy}")
+    print(f"Anomaly       : {trust_module.enable_anomaly}")
+    print(f"Disagreement  : {trust_module.enable_disagreement}")
+    print(f"Temperature   : {trust_module.enable_temperature}")
+    print("-" * 40)
+
+
     # Initialize Committee of Experts
 
     t_resnet, resnet_ckpt = load_teacher(
@@ -296,6 +344,41 @@ def main():
     all_disagreement = torch.cat(all_disagreement).numpy()
     all_anomaly = torch.cat(all_anomaly).numpy()
 
+    # -------------------------------------------------
+    # Ablation Sanity Checks
+    # -------------------------------------------------
+
+    if args.disable_confidence:
+        assert np.allclose(all_confidence, 0.0), \
+            "Confidence ablation failed!"
+
+    if args.disable_entropy:
+        assert np.allclose(all_entropy, 0.0), \
+            "Entropy ablation failed!"
+
+    if args.disable_anomaly:
+        assert np.allclose(all_anomaly, 0.0), \
+            "Anomaly ablation failed!"
+
+    if args.disable_disagreement:
+        assert np.allclose(all_disagreement, 0.0), \
+            "Disagreement ablation failed!"
+
+    if args.disable_temperature:
+        assert np.allclose(
+            all_temperature,
+            args.temp_base
+        ), "Temperature ablation failed!"
+
+    print("\nTrust Statistics")
+    print("-" * 40)
+    print(f"Mean Trust         : {all_trust.mean():.4f}")
+    print(f"Mean Confidence    : {all_confidence.mean():.4f}")
+    print(f"Mean Entropy       : {all_entropy.mean():.4f}")
+    print(f"Mean Anomaly       : {all_anomaly.mean():.4f}")
+    print(f"Mean Disagreement  : {all_disagreement.mean():.4f}")
+    print(f"Mean Temperature   : {all_temperature.mean():.4f}")
+    print("-" * 40)
     # -------------------------------------------------
     # Sanity Checks
     # -------------------------------------------------
