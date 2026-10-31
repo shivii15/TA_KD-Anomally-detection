@@ -249,7 +249,7 @@ def main():
         enable_temperature=cfg["enable_temperature"] and not args.disable_temperature
     )
 
-trust_module.anomaly_detector = iso_model
+    trust_module.anomaly_detector = iso_model
 
 
     trust_module.anomaly_detector = iso_model
