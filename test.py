@@ -237,15 +237,19 @@ def main():
     )
 
     print("✅ Isolation Forest loaded.")
-    trust_module = TGKDTrustModule(
-        base_temperature=args.temp_base,
+    cfg = checkpoint["trust_config"]
 
-        enable_confidence=not args.disable_confidence,
-        enable_entropy=not args.disable_entropy,
-        enable_anomaly=not args.disable_anomaly,
-        enable_disagreement=not args.disable_disagreement,
-        enable_temperature=not args.disable_temperature
+    trust_module = TGKDTrustModule(
+        base_temperature=args.temp_base if args.disable_temperature
+                        else cfg["base_temperature"],
+        enable_confidence=cfg["enable_confidence"] and not args.disable_confidence,
+        enable_entropy=cfg["enable_entropy"] and not args.disable_entropy,
+        enable_anomaly=cfg["enable_anomaly"] and not args.disable_anomaly,
+        enable_disagreement=cfg["enable_disagreement"] and not args.disable_disagreement,
+        enable_temperature=cfg["enable_temperature"] and not args.disable_temperature
     )
+
+trust_module.anomaly_detector = iso_model
 
 
     trust_module.anomaly_detector = iso_model
