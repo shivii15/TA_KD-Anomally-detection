@@ -204,7 +204,10 @@ def main():
             "--resnet_path", resnet,
             "--trans_path", transformer,
             "--lstm_path", lstm,
-            "--iso_path", iso
+            "--iso_path", iso,
+            "--lr", str(LR),
+            "--feat_weight", str(FEAT_WEIGHT),
+            "--temp_base", str(TEMP_BASE)
         ]
 
         cmd.extend(flags)
@@ -216,10 +219,10 @@ def main():
             ])
 
         # Pass the same ablation flags used during training
-        test_cmd.extend(flags)  
+        #test_cmd.extend(flags)  
 
-        print("\nRunning Test Command:")
-        print(" ".join(test_cmd))
+        print("\nRunning Training Command:")
+        print(" ".join(cmd))
 
         if NUM_PARTS is not None:
 
@@ -288,7 +291,8 @@ def main():
             "--resnet_path", resnet,
             "--trans_path", transformer,
             "--lstm_path", lstm,
-            "--iso_path", iso
+            "--iso_path", iso,
+            "--batch_size", str(BATCH)
         ]
         if NUM_PARTS is not None:
 
@@ -297,10 +301,9 @@ def main():
                 str(NUM_PARTS)
             ])
         if args.data_path is not None:
-            test_cmd.extend([
-                "--data_path",
-                args.data_path
-            ])
+            test_cmd.extend(["--data_path", args.data_path])
+
+        test_cmd.extend(flags)
 
         print("\nRunning Test Command:")
         print(" ".join(test_cmd))
